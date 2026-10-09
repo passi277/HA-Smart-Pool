@@ -26,7 +26,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
 from .chemistry import PRODUCT_UNITS
-from .const import CONF_BACKWASH_HOURS, QUALITY_STATES, STATUSES
+from .const import CONF_BACKWASH_HOURS, CONF_METAL_EX_HOURS, QUALITY_STATES, STATUSES
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
 from .season import MAINTENANCE_TASKS, SEASONS
@@ -227,6 +227,7 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.HOURS,
         suggested_display_precision=1,
         value_fn=lambda c: c.data.metal_ex_hours_left,
+        attrs_fn=lambda c: {"total_hours": c.config[CONF_METAL_EX_HOURS]},
     ),
     SmartPoolSensorDescription(
         key="last_dose",

@@ -773,6 +773,8 @@ class SmartPoolController:
         data.orp = self._state_float(CONF_ORP_ENTITY)
         data.water_temp = self._state_float(CONF_WATER_TEMP_ENTITY)
         data.air_temp = self._state_float(CONF_AIR_TEMP_ENTITY)
+        if data.air_temp is None and not self._entity(CONF_AIR_TEMP_ENTITY):
+            data.air_temp = self._weather_temperature()
         data.pump_power = self._state_float(CONF_PUMP_POWER_ENTITY)
 
         data.ph_status = classify_ph(data.ph)
@@ -993,7 +995,7 @@ class SmartPoolController:
             self._fire(EVENT_PROBE_CHECK, rise_mv=round(result.rise_mv, 1))
             self.add_todo(checklist(TASK_PROBE, self.hass.config.language)[0])
 
-    def _stock_thresholds(self) -> dict[str, float]:
+    def stock_thresholds(self) -> dict[str, float]:
         cfg = self.config
         return low_stock_thresholds(
             volume_m3=float(cfg[CONF_VOLUME]),
@@ -1002,7 +1004,7 @@ class SmartPoolController:
         )
 
     def _refresh_stock(self) -> None:
-        thresholds = self._stock_thresholds()
+        thresholds = self.stock_thresholds()
         self.data.low_stock = self.chem.low_products(thresholds)
         new = self.chem.products_to_shop(thresholds)
         if not new or not self._initialized:
@@ -1180,6 +1182,17 @@ class SmartPoolController:
         data.metal_ex_problem_dose = metal_ex_dose(
             volume * 1000, 2 * float(cfg[CONF_METAL_EX_POOL])
         )
+
+    def _weather_temperature(self) -> float | None:
+        """Current outdoor temperature from the weather entity (fallback)."""
+        entity_id = self._entity(CONF_WEATHER_ENTITY)
+        state = self.hass.states.get(entity_id) if entity_id else None
+        if state is None:
+            return None
+        try:
+            return float(state.attributes["temperature"])
+        except (KeyError, TypeError, ValueError):
+            return None
 
     def _last_measurement(self) -> datetime | None:
         if entity_id := self._entity(CONF_LAST_MEASUREMENT_ENTITY):

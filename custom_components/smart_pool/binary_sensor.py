@@ -67,7 +67,11 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         key="stock_low",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda c: bool(c.data.low_stock),
-        attrs_fn=lambda c: {"products": c.data.low_stock, "stock": c.chem.stock},
+        attrs_fn=lambda c: {
+            "products": c.data.low_stock,
+            "stock": c.chem.stock,
+            "thresholds": c.stock_thresholds(),
+        },
     ),
     SmartPoolBinarySensorDescription(
         key="maintenance_due",

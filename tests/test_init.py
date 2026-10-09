@@ -118,6 +118,10 @@ async def test_setup_is_passive_and_calculates(hass: HomeAssistant, sources) -> 
     assert card["guidance"] == "sensor.pool_guidance"
     assert card["temperature"] == "sensor.water_temp"
     assert card["backwash"]["done_button"] == "button.pool_backwash_done"
+    assert hass.states.get("binary_sensor.pool_stock_low").attributes["thresholds"][
+        "chlorine"
+    ] == round(3 * 40 / 0.56)
+    assert hass.states.get("sensor.pool_metal_remover_remaining").attributes["total_hours"] == 48
 
     # Turning the pump on manually is never undone in manual mode.
     await hass.services.async_call("input_boolean", "turn_on", {"entity_id": PUMP}, blocking=True)
@@ -357,8 +361,13 @@ async def test_weather_forecast(
     hass.services.async_register(
         "weather", "get_forecasts", forecasts, supports_response=SupportsResponse.ONLY
     )
-    hass.states.async_set("weather.home", "rainy")
-    await _setup(hass, _entry(**{CONF_WEATHER_ENTITY: "weather.home", CONF_SURFACE: 15}))
+    hass.states.async_set("weather.home", "rainy", {"temperature": 1.5})
+    entry = _entry(
+        **{CONF_WEATHER_ENTITY: "weather.home", CONF_SURFACE: 15, CONF_AIR_TEMP_ENTITY: ""}
+    )
+    await _setup(hass, entry)
+    # No outdoor sensor configured: the weather temperature is used.
+    assert hass.states.get("binary_sensor.pool_frost_risk").state == "on"
 
     assert calls[0] == "hourly"
     assert float(hass.states.get("sensor.pool_rain_last_24_h").state) == 12
