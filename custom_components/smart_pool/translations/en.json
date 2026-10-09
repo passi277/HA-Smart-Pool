@@ -1,0 +1,224 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up pool",
+        "description": "Choose the water sensors and the pump switch. The integration starts in manual mode and does not switch anything until you pick another mode.",
+        "data": {
+          "name": "Name",
+          "volume": "Pool volume",
+          "ph_entity": "pH sensor",
+          "orp_entity": "Redox (ORP) sensor",
+          "water_temp_entity": "Water temperature sensor",
+          "pump_entity": "Pump switch"
+        }
+      },
+      "optional": {
+        "title": "Optional sensors",
+        "data": {
+          "pump_power_entity": "Pump power (W)",
+          "pump_energy_entity": "Pump energy meter (kWh)",
+          "solar_power_entity": "Solar power (W)",
+          "battery_soc_entity": "Battery state of charge",
+          "air_temp_entity": "Outdoor temperature",
+          "last_measurement_entity": "Last measurement timestamp"
+        },
+        "data_description": {
+          "pump_power_entity": "Needed for dry-run protection.",
+          "pump_energy_entity": "Used for energy and cost today.",
+          "solar_power_entity": "Needed for the solar mode.",
+          "battery_soc_entity": "Optional: solar mode only starts above the minimum charge.",
+          "air_temp_entity": "Needed for winter / frost protection.",
+          "last_measurement_entity": "If empty, the last report of the pH sensor is used."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This pump is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pool",
+        "data": {
+          "volume": "Pool volume",
+          "ph_entity": "pH sensor",
+          "orp_entity": "Redox (ORP) sensor",
+          "water_temp_entity": "Water temperature sensor",
+          "pump_entity": "Pump switch"
+        }
+      },
+      "settings": {
+        "title": "Sensors and parameters",
+        "data": {
+          "pump_power_entity": "Pump power (W)",
+          "pump_energy_entity": "Pump energy meter (kWh)",
+          "solar_power_entity": "Solar power (W)",
+          "battery_soc_entity": "Battery state of charge",
+          "air_temp_entity": "Outdoor temperature",
+          "last_measurement_entity": "Last measurement timestamp",
+          "pump_flow": "Pump flow rate (0 = unknown)",
+          "min_runtime": "Minimum daily runtime",
+          "max_runtime": "Maximum daily runtime",
+          "chlorine_strength": "Active chlorine content of product",
+          "chlorine_step": "Chlorine increase per dose",
+          "dry_run_power": "Dry-run limit (0 = off)",
+          "backwash_hours": "Backwash after pump hours",
+          "backwash_days": "Backwash at the latest after",
+          "solar_threshold": "Solar start threshold",
+          "battery_min_soc": "Minimum battery charge for solar",
+          "catchup_time": "Catch-up from (solar mode)",
+          "frost_temp": "Frost protection below",
+          "stale_hours": "Measurement stale after"
+        },
+        "data_description": {
+          "pump_power_entity": "Needed for dry-run protection.",
+          "pump_energy_entity": "Used for energy and cost today.",
+          "solar_power_entity": "Needed for the solar mode.",
+          "battery_soc_entity": "Optional: solar mode only starts above the minimum charge.",
+          "air_temp_entity": "Needed for winter / frost protection.",
+          "last_measurement_entity": "If empty, the last report of the pH sensor is used.",
+          "pump_flow": "If set, the runtime covers at least one full water turnover.",
+          "chlorine_strength": "e.g. 56 % dichlor granulate, 65–70 % calcium hypochlorite, 90 % trichlor tablets.",
+          "dry_run_power": "Pump is stopped if power stays below this value for 2 minutes.",
+          "catchup_time": "If the daily runtime is not reached by then, the pump runs on grid power."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_quality": {
+        "name": "Water quality",
+        "state": {
+          "ok": "OK",
+          "check": "Check",
+          "critical": "Critical",
+          "unknown": "Unknown"
+        }
+      },
+      "ph_status": {
+        "name": "pH status",
+        "state": {
+          "ok": "OK",
+          "check": "Check",
+          "critical": "Critical",
+          "unknown": "Unknown"
+        }
+      },
+      "orp_status": {
+        "name": "Redox status",
+        "state": {
+          "ok": "OK",
+          "check": "Check",
+          "critical": "Critical",
+          "unknown": "Unknown"
+        }
+      },
+      "pump_status": {
+        "name": "Pump status",
+        "state": {
+          "manual": "Manual – not controlled",
+          "off": "Off",
+          "fault": "Fault – pump stopped",
+          "pump_unavailable": "Pump unavailable",
+          "target_reached": "Daily runtime reached",
+          "waiting_schedule": "Waiting for start time",
+          "running_schedule": "Running (schedule)",
+          "waiting_sun": "Waiting for solar surplus",
+          "running_solar": "Running (solar)",
+          "running_catchup": "Running (catch-up)",
+          "running_continuous": "Running (continuous)",
+          "frost_protection": "Frost protection",
+          "winter_idle": "Winter – idle",
+          "no_air_temp": "No outdoor temperature"
+        }
+      },
+      "recommended_runtime": {
+        "name": "Recommended runtime"
+      },
+      "target_runtime": {
+        "name": "Target runtime"
+      },
+      "runtime_today": {
+        "name": "Runtime today"
+      },
+      "remaining_runtime": {
+        "name": "Remaining runtime"
+      },
+      "backwash_hours": {
+        "name": "Pump hours since backwash"
+      },
+      "last_backwash": {
+        "name": "Last backwash"
+      },
+      "last_measurement": {
+        "name": "Last measurement"
+      },
+      "chlorine_dose": {
+        "name": "Chlorine dose"
+      },
+      "ph_minus_dose": {
+        "name": "pH-minus dose"
+      },
+      "ph_plus_dose": {
+        "name": "pH-plus dose"
+      },
+      "energy_today": {
+        "name": "Energy today"
+      },
+      "cost_today": {
+        "name": "Cost today"
+      }
+    },
+    "binary_sensor": {
+      "backwash_due": {
+        "name": "Backwash due"
+      },
+      "measurement_stale": {
+        "name": "Measurement stale"
+      },
+      "pump_fault": {
+        "name": "Pump fault"
+      },
+      "frost_risk": {
+        "name": "Frost risk"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Mode",
+        "state": {
+          "manual": "Manual",
+          "off": "Off",
+          "auto": "Automatic (schedule)",
+          "solar": "Solar",
+          "continuous": "Continuous",
+          "winter": "Winter / frost protection"
+        }
+      }
+    },
+    "time": {
+      "start_time": {
+        "name": "Start time"
+      }
+    },
+    "number": {
+      "runtime_offset": {
+        "name": "Runtime correction"
+      },
+      "electricity_price": {
+        "name": "Electricity price"
+      }
+    },
+    "button": {
+      "backwash_done": {
+        "name": "Backwash done"
+      },
+      "reset_fault": {
+        "name": "Reset fault"
+      }
+    }
+  }
+}

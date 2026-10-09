@@ -1,0 +1,12 @@
+{
+  "domain": "smart_pool",
+  "name": "Smart Pool",
+  "codeowners": ["@passi277"],
+  "config_flow": true,
+  "documentation": "https://github.com/passi277/HA-Smart-Pool",
+  "integration_type": "device",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/passi277/HA-Smart-Pool/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
