@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
+from .chemistry import PRODUCT_UNITS
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
 
@@ -27,7 +28,42 @@ class SmartPoolNumberDescription(NumberEntityDescription):
     set_fn: Callable[[SmartPoolController, float], Awaitable[None]]
 
 
+def _stock(product: str, unit: str) -> SmartPoolNumberDescription:
+    return SmartPoolNumberDescription(
+        key=f"stock_{product}",
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=0,
+        native_max_value=100000,
+        native_step=5,
+        native_unit_of_measurement=unit,
+        mode=NumberMode.BOX,
+        value_fn=lambda c: c.chem.stock.get(product, 0.0),
+        set_fn=lambda c, v: c.async_set_stock(product, v),
+    )
+
+
 NUMBERS: tuple[SmartPoolNumberDescription, ...] = (
+    SmartPoolNumberDescription(
+        key="dose_amount",
+        native_min_value=0,
+        native_max_value=10000,
+        native_step=5,
+        mode=NumberMode.BOX,
+        value_fn=lambda c: c.dose_amount,
+        set_fn=lambda c, v: c.async_set_dose_amount(v),
+    ),
+    SmartPoolNumberDescription(
+        key="boost_hours",
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=0.5,
+        native_max_value=24,
+        native_step=0.5,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        mode=NumberMode.BOX,
+        value_fn=lambda c: c.boost_hours,
+        set_fn=lambda c, v: c.async_set_boost_hours(v),
+    ),
+    *(_stock(product, unit) for product, unit in PRODUCT_UNITS.items()),
     SmartPoolNumberDescription(
         key="target_runtime",
         native_min_value=0,
@@ -84,6 +120,13 @@ class SmartPoolNumber(SmartPoolEntity, NumberEntity):
         """Initialize the number."""
         super().__init__(controller, description.key)
         self.entity_description = description
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Unit; the dose amount follows the selected product."""
+        if self.entity_description.key == "dose_amount":
+            return PRODUCT_UNITS[self.controller.dose_product]
+        return super().native_unit_of_measurement
 
     @property
     def native_value(self) -> float:

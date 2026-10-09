@@ -1,0 +1,52 @@
+log_dose:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: smart_pool
+    product:
+      required: true
+      selector:
+        select:
+          translation_key: product
+          options:
+            - chlorine
+            - shock
+            - ph_minus
+            - ph_plus
+            - metal_ex
+    amount:
+      selector:
+        number:
+          min: 0
+          max: 10000
+          step: 5
+          mode: box
+
+start_program:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: smart_pool
+    program:
+      required: true
+      selector:
+        select:
+          translation_key: program
+          options:
+            - none
+            - boost
+            - shock
+            - new_fill
+            - algae
+    hours:
+      selector:
+        number:
+          min: 0
+          max: 336
+          step: 0.5
+          unit_of_measurement: h
+          mode: box

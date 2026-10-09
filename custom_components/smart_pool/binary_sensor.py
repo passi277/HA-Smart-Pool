@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -23,6 +24,7 @@ class SmartPoolBinarySensorDescription(BinarySensorEntityDescription):
     """Describes a Smart Pool binary sensor."""
 
     value_fn: Callable[[SmartPoolController], bool | None]
+    attrs_fn: Callable[[SmartPoolController], dict[str, Any]] | None = None
 
 
 BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
@@ -50,6 +52,48 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         key="metal_ex_active",
         device_class=BinarySensorDeviceClass.RUNNING,
         value_fn=lambda c: c.data.metal_ex_hours_left > 0,
+    ),
+    SmartPoolBinarySensorDescription(
+        key="probe_check",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda c: c.data.probe_suspect,
+        attrs_fn=lambda c: {
+            "failed_checks": c.chem.probe_failures,
+            "last_redox_rise_mv": c.chem.last_rise_mv,
+            "check_pending": c.chem.pending_check is not None,
+        },
+    ),
+    SmartPoolBinarySensorDescription(
+        key="stock_low",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda c: bool(c.data.low_stock),
+        attrs_fn=lambda c: {"products": c.data.low_stock, "stock": c.chem.stock},
+    ),
+    SmartPoolBinarySensorDescription(
+        key="maintenance_due",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda c: bool(c.data.maintenance_due),
+        attrs_fn=lambda c: {
+            "tasks": c.data.maintenance_due,
+            "last_done": c.season.maintenance,
+        },
+    ),
+    SmartPoolBinarySensorDescription(
+        key="visual_finding",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda c: bool(c.data.visual),
+        attrs_fn=lambda c: {"findings": c.data.visual, "text": c.data.visual_text},
+    ),
+    SmartPoolBinarySensorDescription(
+        key="motion_while_away",
+        device_class=BinarySensorDeviceClass.MOTION,
+        value_fn=lambda c: c.data.motion_away,
+    ),
+    SmartPoolBinarySensorDescription(
+        key="connection_unstable",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda c: c.data.connection_unstable,
+        attrs_fn=lambda c: {"outages_today": c.data.outages_today},
     ),
     SmartPoolBinarySensorDescription(
         key="frost_risk",
@@ -87,3 +131,10 @@ class SmartPoolBinarySensor(SmartPoolEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return true if the flag is set."""
         return self.entity_description.value_fn(self.controller)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra attributes."""
+        if self.entity_description.attrs_fn is None:
+            return None
+        return self.entity_description.attrs_fn(self.controller)

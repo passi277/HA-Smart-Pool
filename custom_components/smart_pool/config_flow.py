@@ -34,17 +34,26 @@ from .const import (
     CONF_METAL_EX_HOURS,
     CONF_METAL_EX_POOL,
     CONF_MIN_RUNTIME,
+    CONF_MOTION_ENTITY,
     CONF_ORP_ENTITY,
+    CONF_OUTAGE_LIMIT,
     CONF_PH_ENTITY,
+    CONF_PRESENCE_ENTITY,
+    CONF_PROBE_DAYS,
     CONF_PUMP_ENERGY_ENTITY,
     CONF_PUMP_ENTITY,
     CONF_PUMP_FLOW,
     CONF_PUMP_POWER_ENTITY,
+    CONF_PUMP_WIFI_ENTITY,
     CONF_RAIN_ENTITY,
+    CONF_SAND_DAYS,
+    CONF_SEALS_DAYS,
+    CONF_SHOPPING_LIST_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
     CONF_SOLAR_THRESHOLD,
     CONF_STALE_HOURS,
     CONF_SURFACE,
+    CONF_VISUAL_ENTITY,
     CONF_VOLUME,
     CONF_WATER_TEMP_ENTITY,
     CONF_WEATHER_ENTITY,
@@ -66,15 +75,12 @@ def _sensor(device_class: SensorDeviceClass | None = None) -> selector.EntitySel
 def _number(
     minimum: float, maximum: float, step: float, unit: str | None = None
 ) -> selector.NumberSelector:
-    return selector.NumberSelector(
-        selector.NumberSelectorConfig(
-            min=minimum,
-            max=maximum,
-            step=step,
-            unit_of_measurement=unit,
-            mode=selector.NumberSelectorMode.BOX,
-        )
+    config = selector.NumberSelectorConfig(
+        min=minimum, max=maximum, step=step, mode=selector.NumberSelectorMode.BOX
     )
+    if unit is not None:
+        config["unit_of_measurement"] = unit
+    return selector.NumberSelector(config)
 
 
 def _core_schema(defaults: dict[str, Any], with_name: bool) -> vol.Schema:
@@ -118,6 +124,21 @@ def _optional_entities_schema(values: dict[str, Any]) -> dict[Any, Any]:
             selector.EntitySelectorConfig(domain="weather")
         ),
         CONF_RAIN_ENTITY: _sensor(SensorDeviceClass.PRECIPITATION),
+        CONF_PUMP_WIFI_ENTITY: _sensor(SensorDeviceClass.SIGNAL_STRENGTH),
+        CONF_VISUAL_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["input_text", "sensor", "text"])
+        ),
+        CONF_MOTION_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="binary_sensor")
+        ),
+        CONF_PRESENCE_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain=["person", "group", "input_boolean", "binary_sensor", "device_tracker"]
+            )
+        ),
+        CONF_SHOPPING_LIST_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="todo")
+        ),
     }
     return {
         vol.Optional(key, description={"suggested_value": values.get(key)}): sel
@@ -172,6 +193,10 @@ def _parameters_schema(values: dict[str, Any]) -> dict[Any, Any]:
         vol.Required(CONF_METAL_EX_HOURS, default=default(CONF_METAL_EX_HOURS)): _number(
             0, 168, 1, "h"
         ),
+        vol.Required(CONF_SAND_DAYS, default=default(CONF_SAND_DAYS)): _number(0, 3650, 1, "d"),
+        vol.Required(CONF_PROBE_DAYS, default=default(CONF_PROBE_DAYS)): _number(0, 3650, 1, "d"),
+        vol.Required(CONF_SEALS_DAYS, default=default(CONF_SEALS_DAYS)): _number(0, 3650, 1, "d"),
+        vol.Required(CONF_OUTAGE_LIMIT, default=default(CONF_OUTAGE_LIMIT)): _number(0, 100, 1),
     }
 
 

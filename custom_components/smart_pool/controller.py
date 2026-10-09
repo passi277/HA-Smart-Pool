@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
@@ -20,6 +21,7 @@ from homeassistant.const import (
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_interval,
@@ -47,6 +49,18 @@ from .calculations import (
     weather_extra_hours,
     weather_hint,
 )
+from .chemistry import (
+    PRODUCT_CHLORINE,
+    PRODUCT_METAL_EX,
+    PRODUCT_PH_MINUS,
+    PRODUCT_PH_PLUS,
+    PRODUCT_SHOCK,
+    PRODUCTS,
+    Chemistry,
+    low_stock_thresholds,
+    product_name,
+    shock_dose,
+)
 from .const import (
     CONF_AIR_TEMP_ENTITY,
     CONF_BACKWASH_DAYS,
@@ -65,17 +79,26 @@ from .const import (
     CONF_METAL_EX_HOURS,
     CONF_METAL_EX_POOL,
     CONF_MIN_RUNTIME,
+    CONF_MOTION_ENTITY,
     CONF_ORP_ENTITY,
+    CONF_OUTAGE_LIMIT,
     CONF_PH_ENTITY,
+    CONF_PRESENCE_ENTITY,
+    CONF_PROBE_DAYS,
     CONF_PUMP_ENERGY_ENTITY,
     CONF_PUMP_ENTITY,
     CONF_PUMP_FLOW,
     CONF_PUMP_POWER_ENTITY,
+    CONF_PUMP_WIFI_ENTITY,
     CONF_RAIN_ENTITY,
+    CONF_SAND_DAYS,
+    CONF_SEALS_DAYS,
+    CONF_SHOPPING_LIST_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
     CONF_SOLAR_THRESHOLD,
     CONF_STALE_HOURS,
     CONF_SURFACE,
+    CONF_VISUAL_ENTITY,
     CONF_VOLUME,
     CONF_WATER_TEMP_ENTITY,
     CONF_WEATHER_ENTITY,
@@ -88,24 +111,67 @@ from .const import (
     DRY_RUN_GRACE_SECONDS,
     EVENT_BACKWASH_DONE,
     EVENT_BACKWASH_DUE,
+    EVENT_CONNECTION_UNSTABLE,
+    EVENT_DOSE_LOGGED,
     EVENT_HEAVY_RAIN,
+    EVENT_MAINTENANCE_DUE,
     EVENT_MEASUREMENT_STALE,
     EVENT_METAL_EX_ADDED,
     EVENT_METAL_EX_DONE,
+    EVENT_MOTION_WHILE_AWAY,
+    EVENT_PROBE_CHECK,
+    EVENT_PROGRAM_DONE,
+    EVENT_PROGRAM_STARTED,
     EVENT_PUMP_FAULT,
     EVENT_PUMP_STARTED,
     EVENT_PUMP_STOPPED,
     EVENT_REFILLED,
+    EVENT_SEASON,
     EVENT_SMART_POOL,
+    EVENT_STOCK_LOW,
+    EVENT_VISUAL_FINDING,
     EVENT_WATER_QUALITY_CHANGED,
+    EVENT_WEEKLY_REPORT,
     MODE_AUTO,
     MODE_MANUAL,
+    MODE_WINTER,
     MODES,
+    MOTION_COOLDOWN_SECONDS,
     OPTIONAL_ENTITY_KEYS,
     QUALITY_UNKNOWN,
     STATUS_MANUAL,
     TICK_SECONDS,
     WEATHER_REFRESH_SECONDS,
+)
+from .programs import (
+    DEFAULT_BOOST_HOURS,
+    FOLLOW_UP_BACKWASH,
+    FOLLOW_UP_MEASURE,
+    PROGRAM_BOOST,
+    PROGRAM_FOLLOW_UP,
+    PROGRAM_HOURS,
+    PROGRAM_NEW_FILL,
+    ProgramState,
+)
+from .season import (
+    SEASON_START,
+    SEASON_SWIM,
+    SEASON_WINTERIZE,
+    TASK_PROBE,
+    TASK_SAND,
+    TASK_SEALS,
+    Season,
+    checklist,
+)
+from .stats import (
+    EnergyCounter,
+    WeekStats,
+    build_report,
+    parse_visual,
+    report_due,
+    solar_savings_rate,
+    swim_label,
+    swim_score,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -151,6 +217,23 @@ class PoolData:
     metal_ex_pool_dose: float = 0.0
     metal_ex_problem_dose: float = 0.0
     metal_ex_hours_left: float = 0.0
+    program_hours_left: float = 0.0
+    probe_suspect: bool = False
+    low_stock: list[str] = field(default_factory=list)
+    season: str = SEASON_SWIM
+    maintenance_due: list[str] = field(default_factory=list)
+    power_energy_today: float = 0.0
+    solar_energy_today: float = 0.0
+    solar_share_today: float | None = None
+    solar_savings_today: float = 0.0
+    solar_savings_rate: float = 0.0
+    swim_score: int | None = None
+    swim_label: str = "unknown"
+    visual: list[str] = field(default_factory=list)
+    visual_text: str | None = None
+    motion_away: bool = False
+    outages_today: int = 0
+    connection_unstable: bool = False
 
 
 def _parse_time(value: Any, fallback: str) -> time:
@@ -192,6 +275,28 @@ class SmartPoolController:
         self.metal_ex_backwash: bool = False
         self._rain_hours: dict[str, float] = {}
         self._rain_last_value: float | None = None
+        self.chem = Chemistry()
+        self.program = ProgramState()
+        self.season = Season()
+        self.todo_items: list[dict[str, Any]] = []
+        self.week = WeekStats()
+        self.last_report_date: date | None = None
+        self.last_report_text: str | None = None
+        self.last_report_details: dict[str, Any] = {}
+        self.energy_today_counter = EnergyCounter()
+        self._energy_counter_date: date | None = None
+        self.outages_today: int = 0
+        self._outage_date: date | None = None
+        self.dose_product: str = PRODUCT_CHLORINE
+        self.dose_amount: float = 0.0
+        self.boost_hours: float = DEFAULT_BOOST_HOURS
+        self.shock_done_at: datetime | None = None
+        self._season_status: str | None = None
+        self._due_tasks: set[str] = set()
+        self._visual: set[str] = set()
+        self._motion_fired: datetime | None = None
+        self._last_energy_tick: datetime | None = None
+        self._pump_state_raw: str | None = None
 
         # Volatile state
         self._forecast: ForecastSummary | None = None
@@ -283,6 +388,29 @@ class SmartPoolController:
         self._rain_hours = {k: float(v) for k, v in stored.get("rain_hours", {}).items()}
         if stored.get("rain_last_value") is not None:
             self._rain_last_value = float(stored["rain_last_value"])
+        self.chem = Chemistry.from_dict(stored.get("chemistry"))
+        self.program = ProgramState.from_dict(stored.get("program"))
+        self.season = Season.from_dict(stored.get("season"))
+        self.todo_items = list(stored.get("todo_items", []))
+        self.week = WeekStats.from_dict(stored.get("week"))
+        if raw := stored.get("last_report_date"):
+            self.last_report_date = date.fromisoformat(raw)
+        self.last_report_text = stored.get("last_report_text")
+        self.last_report_details = dict(stored.get("last_report_details", {}))
+        self.energy_today_counter = EnergyCounter.from_dict(stored.get("energy_today_counter"))
+        if raw := stored.get("energy_counter_date"):
+            self._energy_counter_date = date.fromisoformat(raw)
+        self.outages_today = int(stored.get("outages_today", 0))
+        if raw := stored.get("outage_date"):
+            self._outage_date = date.fromisoformat(raw)
+        if stored.get("dose_product") in PRODUCTS:
+            self.dose_product = stored["dose_product"]
+        self.dose_amount = float(stored.get("dose_amount", 0.0))
+        self.boost_hours = float(stored.get("boost_hours", DEFAULT_BOOST_HOURS))
+        self._season_status = stored.get("season_status")
+        self._due_tasks = set(stored.get("due_tasks", []))
+        if raw := stored.get("shock_done_at"):
+            self.shock_done_at = dt_util.parse_datetime(raw)
 
     def _data_to_save(self) -> dict[str, Any]:
         return {
@@ -304,6 +432,28 @@ class SmartPoolController:
             "metal_ex_backwash": self.metal_ex_backwash,
             "rain_hours": self._rain_hours,
             "rain_last_value": self._rain_last_value,
+            "chemistry": self.chem.as_dict(),
+            "program": self.program.as_dict(),
+            "season": self.season.as_dict(),
+            "todo_items": self.todo_items,
+            "week": self.week.as_dict(),
+            "last_report_date": self.last_report_date.isoformat()
+            if self.last_report_date
+            else None,
+            "last_report_text": self.last_report_text,
+            "last_report_details": self.last_report_details,
+            "energy_today_counter": self.energy_today_counter.as_dict(),
+            "energy_counter_date": self._energy_counter_date.isoformat()
+            if self._energy_counter_date
+            else None,
+            "outages_today": self.outages_today,
+            "outage_date": self._outage_date.isoformat() if self._outage_date else None,
+            "dose_product": self.dose_product,
+            "dose_amount": self.dose_amount,
+            "boost_hours": self.boost_hours,
+            "shock_done_at": self.shock_done_at.isoformat() if self.shock_done_at else None,
+            "season_status": self._season_status,
+            "due_tasks": sorted(self._due_tasks),
         }
 
     def _schedule_save(self) -> None:
@@ -403,15 +553,140 @@ class SmartPoolController:
         await self.async_update()
 
     async def async_metal_ex_added(self) -> None:
-        """Metal remover was dosed: start the treatment window."""
-        now = dt_util.now()
+        """Metal remover was dosed (recommended amount): start the treatment."""
+        await self.async_log_dose(PRODUCT_METAL_EX, None)
+
+    def _start_metal_ex(self, now: datetime, ml: float) -> None:
         hours = float(self.config[CONF_METAL_EX_HOURS])
-        self._fire(EVENT_METAL_EX_ADDED, ml=self.data.metal_ex_dose, hours=hours)
+        self._fire(EVENT_METAL_EX_ADDED, ml=ml, hours=hours)
         self.fresh_water_l = 0.0
         self.metal_ex_until = now + timedelta(hours=hours) if hours > 0 else None
         self.metal_ex_backwash = False
+
+    # ------------------------------------------------------------- chemistry
+
+    def recommended_amount(self, product: str) -> float:
+        """Suggested amount for a product right now."""
+        cfg = self.config
+        volume = float(cfg[CONF_VOLUME])
+        strength = float(cfg[CONF_CHLORINE_STRENGTH])
+        data = self.data
+        if product == PRODUCT_CHLORINE:
+            if data.chlorine_dose:
+                return data.chlorine_dose
+            return float(5 * round(volume * float(cfg[CONF_CHLORINE_STEP]) / (strength / 100) / 5))
+        if product == PRODUCT_SHOCK:
+            return shock_dose(volume, strength)
+        if product == PRODUCT_PH_MINUS:
+            return data.ph_minus_dose or float(5 * round(volume * 10 / 5))
+        if product == PRODUCT_PH_PLUS:
+            return data.ph_plus_dose or float(5 * round(volume * 10 / 5))
+        if product == PRODUCT_METAL_EX:
+            return data.metal_ex_dose or data.metal_ex_pool_dose
+        return 0.0
+
+    async def async_log_dose(self, product: str, amount: float | None) -> None:
+        """Log a chemical addition (None = recommended amount)."""
+        if product not in PRODUCTS:
+            raise HomeAssistantError(f"Unknown product {product}")
+        now = dt_util.now()
+        value = self.recommended_amount(product) if amount is None else float(amount)
+        entry = self.chem.add_dose(now, product, value, self.data.orp)
+        if product == PRODUCT_METAL_EX:
+            self._start_metal_ex(now, value)
+        self._fire(EVENT_DOSE_LOGGED, product=product, amount=entry.amount)
         self._schedule_save()
         await self.async_update()
+
+    async def async_log_selected_dose(self) -> None:
+        """Log the product and amount chosen in the dose entities."""
+        await self.async_log_dose(self.dose_product, self.dose_amount)
+
+    async def async_set_dose_product(self, product: str) -> None:
+        """Pick the product for the dose log; prefill the amount."""
+        if product not in PRODUCTS:
+            raise HomeAssistantError(f"Unknown product {product}")
+        self.dose_product = product
+        self.dose_amount = self.recommended_amount(product)
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_set_dose_amount(self, value: float) -> None:
+        """Set the amount for the dose log."""
+        self.dose_amount = value
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_set_stock(self, product: str, value: float) -> None:
+        """Set the stock of a product."""
+        self.chem.set_stock(product, value)
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_new_season(self) -> None:
+        """Reset season consumption."""
+        self.chem.reset_season()
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_maintenance_done(self, task: str) -> None:
+        """Mark a maintenance task as done."""
+        self.season.done(task, dt_util.now().date())
+        if task == TASK_PROBE:
+            self.chem.probe_calibrated()
+        self._due_tasks.discard(task)
+        self._schedule_save()
+        await self.async_update()
+
+    # -------------------------------------------------------------- programs
+
+    async def async_start_program(self, name: str, hours: float | None = None) -> None:
+        """Start a special program (PROGRAM_NONE cancels)."""
+        now = dt_util.now()
+        if hours is None:
+            hours = self.boost_hours if name == PROGRAM_BOOST else PROGRAM_HOURS.get(name, 0.0)
+        try:
+            self.program.start(name, now, hours)
+        except ValueError as err:
+            raise HomeAssistantError(str(err)) from err
+        if self.program.active:
+            if name == PROGRAM_NEW_FILL:
+                # The whole pool is fresh (iron-rich) water.
+                self.fresh_water_l = float(self.config[CONF_VOLUME]) * 1000
+            self._fire(EVENT_PROGRAM_STARTED, program=name, hours=hours)
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_set_boost_hours(self, value: float) -> None:
+        """Set the boost duration."""
+        self.boost_hours = value
+        self._schedule_save()
+        await self.async_update()
+
+    # ------------------------------------------------------------------ todo
+
+    def add_todo(self, summary: str, description: str | None = None) -> bool:
+        """Add an open task unless an open one with the same text exists."""
+        if any(
+            item["summary"] == summary and item["status"] == "needs_action"
+            for item in self.todo_items
+        ):
+            return False
+        self.todo_items.append(
+            {
+                "uid": uuid.uuid4().hex,
+                "summary": summary,
+                "status": "needs_action",
+                "description": description,
+            }
+        )
+        self._schedule_save()
+        return True
+
+    async def async_todo_changed(self) -> None:
+        """Persist todo changes made through the todo entity."""
+        self._schedule_save()
+        self._notify()
 
     async def async_reset_fault(self) -> None:
         """Acknowledge a pump fault."""
@@ -426,6 +701,7 @@ class SmartPoolController:
         """Recalculate everything and act on the pump if needed."""
         async with self._lock:
             now = dt_util.now()
+            self._integrate_energy(now)
             self._accumulate(now)
             self._read_pump(now)
             await self._async_refresh_forecast(now)
@@ -463,6 +739,7 @@ class SmartPoolController:
         else:
             self._runtime_today_s += before
         self._backwash_s += before + after
+        self.week.runtime_s += before + after
 
     def _read_pump(self, now: datetime) -> None:
         entity_id = self._entity(CONF_PUMP_ENTITY)
@@ -471,6 +748,14 @@ class SmartPoolController:
             pump_on = None
         else:
             pump_on = state.state == STATE_ON
+        raw = state.state if state is not None else None
+        if self._outage_date != now.date():
+            self._outage_date = now.date()
+            self.outages_today = 0
+        if pump_on is None and self._pump_state_raw in (STATE_ON, STATE_OFF):
+            self.outages_today += 1
+            self.week.outages += 1
+        self._pump_state_raw = raw
         if pump_on and not self._pump_on:
             self._pump_on_since = now
         elif not pump_on:
@@ -497,7 +782,11 @@ class SmartPoolController:
         volume = float(cfg[CONF_VOLUME])
         data.surface = round(surface_area(volume, float(cfg[CONF_SURFACE])), 2)
         self._refresh_rain(now)
+        self._refresh_program(now)
         self._refresh_metal_ex(now)
+        data.last_measurement = self._last_measurement()
+        self._refresh_visual()
+        self._refresh_probe(now)
         forecast = data.forecast
         data.weather_extra_hours = weather_extra_hours(
             heavy_rain=data.heavy_rain,
@@ -545,6 +834,10 @@ class SmartPoolController:
                 metal_ex_pending_ml=data.metal_ex_dose,
                 metal_ex_hours_left=data.metal_ex_hours_left,
                 metal_ex_backwash=self.metal_ex_backwash,
+                metal_ex_pool_ml=data.metal_ex_pool_dose,
+                after_shock=self._after_shock(data.last_measurement),
+                visual=tuple(data.visual),
+                probe_suspect=data.probe_suspect,
                 language=self.hass.config.language,
             )
         )
@@ -559,7 +852,6 @@ class SmartPoolController:
         data.backwash_due = due or self.metal_ex_backwash
 
         # Measurement age
-        data.last_measurement = self._last_measurement()
         stale_hours = float(cfg[CONF_STALE_HOURS])
         data.measurement_stale = bool(
             stale_hours > 0
@@ -571,6 +863,11 @@ class SmartPoolController:
 
         self._refresh_energy(now)
         self._refresh_solar(now)
+        self._refresh_stock()
+        self._refresh_season(now)
+        self._refresh_connection(now)
+        self._refresh_motion(now)
+        self._refresh_stats(now)
 
         if self._initialized:
             if data.quality != prev_quality and data.quality != QUALITY_UNKNOWN:
@@ -657,6 +954,214 @@ class SmartPoolController:
             self._fire(EVENT_HEAVY_RAIN, rain_mm=data.rain_last_24h)
         data.heavy_rain = heavy
 
+    def _refresh_program(self, now: datetime) -> None:
+        ended = self.program.tick(now)
+        if ended:
+            follow_up = PROGRAM_FOLLOW_UP.get(ended)
+            if follow_up == FOLLOW_UP_MEASURE:
+                self.shock_done_at = now
+            elif follow_up == FOLLOW_UP_BACKWASH:
+                self.metal_ex_backwash = True
+            self._fire(EVENT_PROGRAM_DONE, program=ended, follow_up=follow_up)
+        self.data.program_hours_left = round(self.program.remaining_hours(now), 1)
+
+    def _after_shock(self, last_measurement: datetime | None) -> bool:
+        if self.shock_done_at is None:
+            return False
+        if last_measurement is not None and last_measurement > self.shock_done_at:
+            self.shock_done_at = None
+            return False
+        return True
+
+    def _refresh_visual(self) -> None:
+        entity_id = self._entity(CONF_VISUAL_ENTITY)
+        state = self.hass.states.get(entity_id) if entity_id else None
+        text = state.state if state is not None else None
+        findings = parse_visual(text)
+        new = set(findings) - self._visual
+        if new and self._initialized:
+            self._fire(EVENT_VISUAL_FINDING, findings=sorted(new), text=text)
+        self._visual = set(findings)
+        self.data.visual = findings
+        self.data.visual_text = text
+
+    def _refresh_probe(self, now: datetime) -> None:
+        was = self.chem.probe_suspect
+        result = self.chem.evaluate_probe(now, self.data.orp, self.data.last_measurement)
+        self.data.probe_suspect = self.chem.probe_suspect
+        if result is not None and self.chem.probe_suspect and not was:
+            self._fire(EVENT_PROBE_CHECK, rise_mv=round(result.rise_mv, 1))
+            self.add_todo(checklist(TASK_PROBE, self.hass.config.language)[0])
+
+    def _stock_thresholds(self) -> dict[str, float]:
+        cfg = self.config
+        return low_stock_thresholds(
+            volume_m3=float(cfg[CONF_VOLUME]),
+            chlorine_strength=float(cfg[CONF_CHLORINE_STRENGTH]),
+            metal_ex_pool_ml=self.data.metal_ex_pool_dose,
+        )
+
+    def _refresh_stock(self) -> None:
+        thresholds = self._stock_thresholds()
+        self.data.low_stock = self.chem.low_products(thresholds)
+        new = self.chem.products_to_shop(thresholds)
+        if not new or not self._initialized:
+            return
+        language = self.hass.config.language
+        shopping = self._entity(CONF_SHOPPING_LIST_ENTITY)
+        for product in new:
+            name = product_name(product, language)
+            self._fire(EVENT_STOCK_LOW, product=product, stock=self.chem.stock.get(product))
+            if shopping:
+                self.hass.async_create_task(
+                    self._async_add_shopping_item(shopping, f"Pool: {name}")
+                )
+
+    async def _async_add_shopping_item(self, entity_id: str, item: str) -> None:
+        try:
+            await self.hass.services.async_call(
+                "todo", "add_item", {ATTR_ENTITY_ID: entity_id, "item": item}, blocking=True
+            )
+        except HomeAssistantError as err:
+            _LOGGER.warning("%s: could not add %s to %s: %s", self.name, item, entity_id, err)
+
+    def maintenance_intervals(self) -> dict[str, float]:
+        cfg = self.config
+        return {
+            TASK_SAND: float(cfg[CONF_SAND_DAYS]),
+            TASK_PROBE: float(cfg[CONF_PROBE_DAYS]),
+            TASK_SEALS: float(cfg[CONF_SEALS_DAYS]),
+        }
+
+    def _refresh_season(self, now: datetime) -> None:
+        data = self.data
+        today = now.date()
+        language = self.hass.config.language
+        temp = data.water_temp if data.water_temp is not None else data.air_temp
+        self.season.add_temperature(today, temp)
+        self.season.ensure_started(today)
+
+        status = self.season.status(today, winter_mode=self.mode == MODE_WINTER)
+        previous = self._season_status or SEASON_SWIM
+        if status != previous and status in (SEASON_WINTERIZE, SEASON_START):
+            self._fire(EVENT_SEASON, season=status)
+            for item in checklist(status, language):
+                self.add_todo(item)
+        self._season_status = status
+        data.season = status
+
+        due = self.season.due_tasks(today, self.maintenance_intervals())
+        for task in set(due) - self._due_tasks:
+            self._fire(EVENT_MAINTENANCE_DUE, task=task)
+            for item in checklist(task, language):
+                self.add_todo(item)
+        self._due_tasks = set(due)
+        data.maintenance_due = due
+
+    def _refresh_connection(self, now: datetime) -> None:
+        data = self.data
+        data.outages_today = self.outages_today
+        limit = float(self.config[CONF_OUTAGE_LIMIT])
+        unstable = limit > 0 and self.outages_today >= limit
+        issue_id = f"pump_unstable_{self.entry.entry_id}"
+        if unstable and not data.connection_unstable:
+            wifi = self._state_float(CONF_PUMP_WIFI_ENTITY)
+            self._fire(EVENT_CONNECTION_UNSTABLE, outages=self.outages_today, wifi=wifi)
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                issue_id,
+                is_fixable=False,
+                severity=ir.IssueSeverity.WARNING,
+                translation_key="pump_unstable",
+                translation_placeholders={
+                    "name": self.name,
+                    "count": str(self.outages_today),
+                    "wifi": f"{wifi:.0f} dBm" if wifi is not None else "–",
+                },
+            )
+        elif not unstable:
+            # Also clears an issue left over from before a restart.
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+        data.connection_unstable = unstable
+
+    def _refresh_motion(self, now: datetime) -> None:
+        motion_id = self._entity(CONF_MOTION_ENTITY)
+        presence_id = self._entity(CONF_PRESENCE_ENTITY)
+        if not motion_id or not presence_id:
+            self.data.motion_away = False
+            return
+        motion = self.hass.states.get(motion_id)
+        presence = self.hass.states.get(presence_id)
+        away = presence is not None and presence.state not in ("home", STATE_ON)
+        active = motion is not None and motion.state == STATE_ON and away
+        if active and not self.data.motion_away:
+            last = self._motion_fired
+            if last is None or (now - last).total_seconds() >= MOTION_COOLDOWN_SECONDS:
+                self._motion_fired = now
+                self._fire(EVENT_MOTION_WHILE_AWAY, motion_entity=motion_id)
+        self.data.motion_away = active
+
+    def _integrate_energy(self, now: datetime) -> None:
+        """Integrate pump power (total and solar share) since the last update."""
+        last, self._last_energy_tick = self._last_energy_tick, now
+        if self._energy_counter_date != now.date():
+            self._energy_counter_date = now.date()
+            self.energy_today_counter = EnergyCounter()
+        if last is None or not self._pump_on:
+            return
+        seconds = min((now - last).total_seconds(), 2 * TICK_SECONDS)
+        pump_w = self.data.pump_power
+        solar_w = self._state_float(CONF_SOLAR_POWER_ENTITY)
+        self.energy_today_counter.add(seconds, pump_w, solar_w)
+        self.week.energy.add(seconds, pump_w, solar_w)
+
+    def _refresh_stats(self, now: datetime) -> None:
+        data = self.data
+        price = self.electricity_price
+        counter = self.energy_today_counter
+        data.power_energy_today = round(counter.energy_kwh, 3)
+        data.solar_energy_today = round(counter.solar_kwh, 3)
+        data.solar_share_today = counter.solar_share
+        data.solar_savings_today = round(counter.solar_kwh * price, 2)
+        data.solar_savings_rate = (
+            solar_savings_rate(data.pump_power, self._state_float(CONF_SOLAR_POWER_ENTITY), price)
+            if self._pump_on
+            else 0.0
+        )
+
+        forecast = data.forecast
+        air = forecast.max_temp if forecast and forecast.max_temp is not None else data.air_temp
+        data.swim_score = swim_score(
+            water_temp=data.water_temp,
+            air_temp=air,
+            rain_mm=forecast.rain_mm if forecast else None,
+            thunder=forecast.thunder if forecast else False,
+            quality=data.quality,
+        )
+        data.swim_label = swim_label(data.swim_score)
+
+        week = self.week
+        if week.start is None:
+            week.start = now.date()
+        week.ph.add(data.ph)
+        week.orp.add(data.orp)
+        week.water_temp.add(data.water_temp)
+        if report_due(now, self.last_report_date):
+            since = datetime.combine(week.start, time.min, tzinfo=now.tzinfo)
+            text, details = build_report(
+                week,
+                doses=self.chem.doses_since(since),
+                price=price,
+                language=self.hass.config.language,
+                now=now,
+            )
+            self.last_report_date = now.date()
+            self.last_report_text = text
+            self.last_report_details = details
+            self._fire(EVENT_WEEKLY_REPORT, text=text, **details)
+            self.week = WeekStats(start=now.date())
+
     def _refresh_metal_ex(self, now: datetime) -> None:
         data = self.data
         cfg = self.config
@@ -682,11 +1187,14 @@ class SmartPoolController:
             if state is not None and (parsed := dt_util.parse_datetime(state.state)):
                 return dt_util.as_local(parsed)
             return None
-        entity_id = self._entity(CONF_PH_ENTITY)
-        state = self.hass.states.get(entity_id) if entity_id else None
-        if state is None:
-            return None
-        return dt_util.as_local(state.last_reported)
+        # Without a timestamp entity: the newest report of the pH or redox sensor.
+        reported = [
+            state.last_reported
+            for key in (CONF_PH_ENTITY, CONF_ORP_ENTITY)
+            if (entity_id := self._entity(key))
+            and (state := self.hass.states.get(entity_id)) is not None
+        ]
+        return dt_util.as_local(max(reported)) if reported else None
 
     def _refresh_energy(self, now: datetime) -> None:
         data = self.data
@@ -764,6 +1272,7 @@ class SmartPoolController:
                 fault=self.fault,
                 last_switch=self._last_switch,
                 metal_ex_active=self.data.metal_ex_hours_left > 0,
+                program_active=self.program.active,
             )
         )
         self.status = decision.status
@@ -818,6 +1327,7 @@ class SmartPoolController:
             "energy_today": own("sensor", "energy_today"),
             "cost_today": own("sensor", "cost_today"),
             "solar_power": self._entity(CONF_SOLAR_POWER_ENTITY),
+            "solar_savings": own("sensor", "solar_savings_rate"),
             "backwash": {
                 "due": own("binary_sensor", "backwash_due"),
                 "hours": own("sensor", "backwash_hours"),

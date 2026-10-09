@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
+    PERCENTAGE,
     UnitOfEnergy,
     UnitOfMass,
     UnitOfPrecipitationDepth,
@@ -24,9 +25,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
+from .chemistry import PRODUCT_UNITS
 from .const import CONF_BACKWASH_HOURS, QUALITY_STATES, STATUSES
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
+from .season import MAINTENANCE_TASKS, SEASONS
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -49,6 +52,29 @@ def _quality_attrs(c: SmartPoolController) -> dict[str, Any]:
     }
 
 
+def _consumption(product: str, unit: str) -> SmartPoolSensorDescription:
+    return SmartPoolSensorDescription(
+        key=f"consumption_{product}",
+        native_unit_of_measurement=unit,
+        suggested_display_precision=0,
+        value_fn=lambda c: round(c.chem.consumption.get(product, 0.0)),
+        attrs_fn=lambda c: {"stock": c.chem.stock.get(product)},
+    )
+
+
+def _dose_attrs(c: SmartPoolController) -> dict[str, Any]:
+    entry = c.chem.last_dose()
+    return {
+        "product": entry.product if entry else None,
+        "amount": entry.amount if entry else None,
+        "unit": PRODUCT_UNITS[entry.product] if entry else None,
+        "log": [
+            {"time": e.time.isoformat(), "product": e.product, "amount": e.amount}
+            for e in reversed(c.chem.log[-10:])
+        ],
+    }
+
+
 def _forecast_attrs(c: SmartPoolController) -> dict[str, Any]:
     f = c.data.forecast
     if f is None:
@@ -63,6 +89,8 @@ def _forecast_attrs(c: SmartPoolController) -> dict[str, Any]:
     }
 
 
+MAX_STATE_LENGTH = 255
+
 SENSORS: tuple[SmartPoolSensorDescription, ...] = (
     SmartPoolSensorDescription(
         key="water_quality",
@@ -74,6 +102,7 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
     SmartPoolSensorDescription(
         key="guidance",
         value_fn=lambda c: c.data.guidance,
+        attrs_fn=lambda c: {"full_text": c.data.guidance},
     ),
     SmartPoolSensorDescription(
         key="ph_status",
@@ -200,6 +229,75 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         value_fn=lambda c: c.data.metal_ex_hours_left,
     ),
     SmartPoolSensorDescription(
+        key="last_dose",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda c: e.time if (e := c.chem.last_dose()) else None,
+        attrs_fn=lambda c: _dose_attrs(c),
+    ),
+    *(_consumption(product, unit) for product, unit in PRODUCT_UNITS.items()),
+    SmartPoolSensorDescription(
+        key="program_remaining",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=1,
+        value_fn=lambda c: c.data.program_hours_left,
+        attrs_fn=lambda c: {"program": c.program.name, "until": c.program.until},
+    ),
+    SmartPoolSensorDescription(
+        key="season",
+        device_class=SensorDeviceClass.ENUM,
+        options=list(SEASONS),
+        value_fn=lambda c: c.data.season,
+        attrs_fn=lambda c: {
+            f"next_{task}": c.season.next_due(task, c.maintenance_intervals())
+            for task in MAINTENANCE_TASKS
+        },
+    ),
+    SmartPoolSensorDescription(
+        key="swim_score",
+        native_unit_of_measurement=PERCENTAGE,
+        value_fn=lambda c: c.data.swim_score,
+        attrs_fn=lambda c: {"rating": c.data.swim_label},
+    ),
+    SmartPoolSensorDescription(
+        key="solar_energy_today",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        suggested_display_precision=2,
+        value_fn=lambda c: c.data.solar_energy_today,
+        attrs_fn=lambda c: {"pump_energy_from_power_kwh": c.data.power_energy_today},
+    ),
+    SmartPoolSensorDescription(
+        key="solar_share_today",
+        native_unit_of_measurement=PERCENTAGE,
+        suggested_display_precision=0,
+        value_fn=lambda c: c.data.solar_share_today,
+    ),
+    SmartPoolSensorDescription(
+        key="solar_savings_today",
+        device_class=SensorDeviceClass.MONETARY,
+        native_unit_of_measurement="EUR",
+        suggested_display_precision=2,
+        value_fn=lambda c: c.data.solar_savings_today,
+    ),
+    SmartPoolSensorDescription(
+        key="solar_savings_rate",
+        native_unit_of_measurement="EUR/h",
+        suggested_display_precision=2,
+        value_fn=lambda c: c.data.solar_savings_rate,
+    ),
+    SmartPoolSensorDescription(
+        key="weekly_report",
+        value_fn=lambda c: c.last_report_text,
+        attrs_fn=lambda c: {**c.last_report_details, "full_text": c.last_report_text},
+    ),
+    SmartPoolSensorDescription(
+        key="pump_outages_today",
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda c: c.data.outages_today,
+    ),
+    SmartPoolSensorDescription(
         key="energy_today",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -241,8 +339,11 @@ class SmartPoolSensor(SmartPoolEntity, SensorEntity):
 
     @property
     def native_value(self) -> float | str | datetime | None:
-        """Return the sensor value."""
-        return self.entity_description.value_fn(self.controller)
+        """Return the sensor value (texts are cut to the 255 char state limit)."""
+        value = self.entity_description.value_fn(self.controller)
+        if isinstance(value, str) and len(value) > MAX_STATE_LENGTH:
+            return value[: MAX_STATE_LENGTH - 1] + "…"
+        return value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

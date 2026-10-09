@@ -23,7 +23,14 @@ Dauerbetrieb, Frostschutz) inklusive Trockenlaufschutz und Rückspül-Erinnerung
 | Metall-Ex | Nachfüllen per Knopf erfassen, Metall-Ex-Menge in ml, richtige Reihenfolge (pH → Metall-Ex → Chlor), Pumpe läuft während der Behandlung durch, danach Rückspül-Erinnerung |
 | Wetter & Regen | Regen letzte 24 h (Regenmesser oder aus Vorhersage geschätzt), Regen-Vorhersage in mm und Litern, Starkregen, Hitze/UV, Gewitter → Wetter-Hinweis und automatische Extra-Laufzeit |
 | Energie | Energie & Kosten heute (aus Energiezähler der Pumpe) |
-| Ereignisse | `smart_pool_event` für eigene Benachrichtigungen |
+| Chemie-Tagebuch | Zugaben erfassen (Knopf oder Dienst), Verbrauch pro Saison, **Sonden-Check**: steigt Redox nach dem Chloren nicht, kommt „Sonde prüfen“ |
+| Vorräte | Lagerbestand je Pflegemittel, sinkt mit jeder Zugabe; knapp → automatisch auf die Einkaufsliste |
+| Sonderprogramme | Boost, Schockchlorung, Neubefüllung, Algen – jeweils mit automatischem Ende und Folge-Hinweis |
+| Kamera & Sicherheit | KI-/Kamera-Befund (trüb, grün, braun, Schmutz) fließt in den Handlungshinweis; Bewegung am Pool bei Abwesenheit |
+| Saison & Wartung | Einwintern/Saisonstart nach Wassertemperatur, Wartungs-Erinnerungen (Sand, Sonde, Dichtungen), eigene **Aufgabenliste** mit Checklisten |
+| Verbindungswächter | Pumpen-Ausfälle pro Tag, Warnung und Eintrag unter *Reparaturen* bei instabiler Verbindung |
+| Statistik | Solarstrom und Solar-Ersparnis der Pumpe, Wochenbericht (Sonntag 19 Uhr), Badewetter 0–100 |
+| Ereignisse & Dienste | `smart_pool_event` für eigene Benachrichtigungen, Dienste `smart_pool.log_dose` und `smart_pool.start_program`, Diagnose-Download |
 
 ### Betriebsarten
 
@@ -60,7 +67,8 @@ Ordner `custom_components/smart_pool` nach `config/custom_components/` kopieren 
 (`switch` oder `input_boolean`).
 
 **Schritt 2 – optional:** Pumpenleistung, Pumpen-Energiezähler, Solarleistung, Akku-Ladestand,
-Außentemperatur, Zeitpunkt der letzten Messung, Wettervorhersage (`weather.*`), Regenmesser.
+Außentemperatur, Zeitpunkt der letzten Messung, Wettervorhersage (`weather.*`), Regenmesser,
+WLAN-Signal des Pumpen-Steckers, Kamera-/KI-Befund, Bewegungsmelder, Anwesenheit, Einkaufsliste.
 
 Alle Parameter (Fördermenge, Min/Max-Laufzeit, Chlorprodukt, Trockenlauf-Grenze, Rückspül-Intervalle,
 Solar-Schwelle, Nachholzeit, Frostgrenze …) lassen sich später unter *Konfigurieren* ändern.
@@ -77,6 +85,11 @@ Solar-Schwelle, Nachholzeit, Frostgrenze …) lassen sich später unter *Konfigu
 | Pumpen-Energiezähler | `sensor.stecker_pool_switch_0_energy` |
 | Solarleistung | `sensor.solarbank_3_e2700_pro_solarleistung` |
 | Letzte Messung | `sensor.pool_last_measurement` |
+| Wettervorhersage | `weather.pirateweather` |
+| Kamera-/KI-Befund | `input_text.pool_ki_befund` |
+| Bewegung am Pool | `binary_sensor.pool_bewegung` |
+| Anwesenheit | `input_boolean.anwesend` |
+| Einkaufsliste | `todo.einkaufsliste` |
 
 ### Empfohlene Einstellungen für den Garten-Pool (Intex Ultra XTR 549 × 274 × 132 cm)
 
@@ -169,6 +182,81 @@ Vorhersage (sonst die tägliche):
 
 Die Hinweise stehen im Sensor **Wetter-Hinweis** (`ok`, wenn nichts anliegt).
 
+## Chemie-Tagebuch und Sonden-Check
+
+Jede Zugabe wird erfasst – entweder über **Pflegemittel** (Auswahl) + **Zugabemenge** + **Zugabe
+erfassen** (die Menge wird mit der aktuellen Empfehlung vorbelegt) oder per Dienst:
+
+```yaml
+action: smart_pool.log_dose
+data:
+  config_entry_id: <Smart-Pool-Eintrag>
+  product: chlorine        # chlorine, shock, ph_minus, ph_plus, metal_ex
+  amount: 30               # leer = empfohlene Menge
+```
+
+- **Verbrauch** je Pflegemittel für die Saison (*Neue Saison* setzt ihn zurück), **Letzte Zugabe** mit den
+  letzten 10 Einträgen.
+- **Sonden-Check:** Nach Chlor/Chlor-Schock prüft Smart Pool mit der nächsten Messung (frühestens nach 6 h),
+  ob der Redox-Wert um mindestens 30 mV gestiegen ist. Zweimal hintereinander ohne Reaktion →
+  *Sonde prüfen*, Hinweis im Handlungshinweis und Aufgabe „Sonde kalibrieren“. *Sonde kalibriert* setzt das zurück.
+
+## Vorräte und Einkaufsliste
+
+Unter **Vorrat …** den Bestand je Pflegemittel eintragen (g bzw. ml) – nur eingetragene Mittel werden
+verfolgt. Jede Zugabe zieht die Menge ab. Fällt ein Vorrat unter die Grenze, geht *Vorrat knapp* an und
+das Mittel landet einmal auf der Einkaufsliste („Pool: Chlor-Granulat“).
+
+| Pflegemittel | knapp unter |
+|---|---|
+| Chlor-Granulat | 3 normale Dosen (bei 17,2 m³: ca. 90 g) |
+| Chlor-Schock | 1 Schock-Dosis (10 mg/l, ca. 310 g) |
+| pH-Minus / pH-Plus | Menge für 0,6 pH (ca. 1 kg) |
+| Metall-Ex | 1 vorbeugende Dosis fürs ganze Becken (ca. 520 ml) |
+
+## Sonderprogramme
+
+Über **Programm** (Auswahl) oder den Dienst `smart_pool.start_program` – die Pumpe läuft durch (außer in
+*Manuell*/*Aus*), danach geht es automatisch zurück zur Betriebsart:
+
+| Programm | Dauer | Danach |
+|---|---|---|
+| **Boost** | *Boost-Dauer* (Standard 2 h) | – |
+| **Schockchlorung** | 24 h | Hinweis „Wasserwerte prüfen“ bis zur nächsten Messung |
+| **Neubefüllung** | 48 h | ganzes Becken gilt als Frischwasser → Metall-Ex-Menge fürs ganze Becken; danach rückspülen |
+| **Algen** | 72 h | rückspülen |
+
+## Kamera und Sicherheit
+
+- **Kamera-/KI-Befund:** Ein Text wie „Wasser leicht trüb“ wird ausgewertet (trüb, grün/Algen, braun/Eisen,
+  Schmutz/Laub – Verneinungen wie „nicht trüb“ werden erkannt). Daraus entstehen Hinweise wie
+  „Wasser trüb trotz guter Werte – rückspülen, Sonde prüfen“ oder „bräunlich: Metall-Ex zugeben“.
+- **Bewegung bei Abwesenheit:** Bewegung am Pool, während die Anwesenheit nicht „home“/„on“ ist →
+  Binärsensor und Ereignis `motion_while_away` (höchstens alle 10 min).
+
+## Saison, Wartung und Aufgabenliste
+
+- **Saison:** Liegt das Wasser 5 Tage im Mittel unter 12 °C (August–Dezember) → *Einwintern empfohlen*.
+  In der Betriebsart *Winter* und 3 Tagen über 12 °C (März–Juni) → *Saisonstart empfohlen*.
+- **Wartung:** Filtersand (alle 730 Tage), Sonde kalibrieren (90 Tage), Dichtungen prüfen (365 Tage) –
+  gezählt ab Installation, erledigt per Knopf. Intervalle unter *Konfigurieren*.
+- Alle Schritte landen als Checkliste in der eigenen **Aufgabenliste** (`todo.<pool>_aufgaben`), die sich wie
+  jede HA-Liste abhaken und erweitern lässt.
+
+## Verbindungswächter
+
+Jedes Mal, wenn der Pumpen-Schalter nicht erreichbar wird, zählt *Pumpen-Ausfälle heute* hoch. Ab der
+eingestellten Grenze (Standard 5) geht *Pumpen-Verbindung instabil* an und unter *Einstellungen →
+Reparaturen* erscheint ein Hinweis mit dem WLAN-Signal des Steckers.
+
+## Statistik
+
+- **Solarstrom heute**, **Solaranteil heute**, **Solar-Ersparnis heute/aktuell** – aus Pumpen- und Solarleistung.
+- **Wochenbericht:** Sonntag ab 19 Uhr, z. B. „KW 41 · 52,0 h Filter · 24,0 kWh (7,20 €) · 50 % Solar ·
+  pH 7,1–7,3 · Redox 520–560 mV · Chlor-Granulat 120 g“ – als Sensor und Ereignis `weekly_report`.
+- **Badewetter** 0–100 aus Wasser- und Lufttemperatur, Regen, Gewitter und Wasserqualität.
+- **Diagnose:** *Geräte & Dienste → Smart Pool → Diagnose herunterladen*.
+
 ## Modern Pool Card
 
 Smart Pool liefert alles, was die **Modern Pool Card** (`custom:ha-pool-card` aus *Modern Cards*) braucht.
@@ -212,7 +300,9 @@ Hinweis: Die Karte zeigt die Betriebsarten mit ihren internen Namen (`manual`, `
 Die Integration verschickt selbst keine Nachrichten, sondern feuert `smart_pool_event` mit
 `type`: `water_quality_changed`, `measurement_stale`, `backwash_due`, `backwash_done`,
 `pump_fault`, `pump_started`, `pump_stopped`, `heavy_rain`, `refilled`, `metal_ex_added`,
-`metal_ex_done`.
+`metal_ex_done`, `dose_logged`, `probe_check`, `stock_low`, `program_started`, `program_done`,
+`season`, `maintenance_due`, `connection_unstable`, `weekly_report`, `visual_finding`,
+`motion_while_away`.
 
 ```yaml
 triggers:
@@ -241,4 +331,8 @@ actions:
 pip install -r requirements_test.txt ruff
 pytest
 ruff check . && ruff format --check .
+# Übersetzungen neu erzeugen:
+python scripts/gen_translations.py en > custom_components/smart_pool/strings.json
+cp custom_components/smart_pool/strings.json custom_components/smart_pool/translations/en.json
+python scripts/gen_translations.py de > custom_components/smart_pool/translations/de.json
 ```

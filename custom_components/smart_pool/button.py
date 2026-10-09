@@ -6,12 +6,14 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
+from .season import TASK_PROBE, TASK_SAND, TASK_SEALS
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -33,6 +35,30 @@ BUTTONS: tuple[SmartPoolButtonDescription, ...] = (
     SmartPoolButtonDescription(
         key="metal_ex_added",
         press_fn=lambda c: c.async_metal_ex_added(),
+    ),
+    SmartPoolButtonDescription(
+        key="log_dose",
+        press_fn=lambda c: c.async_log_selected_dose(),
+    ),
+    SmartPoolButtonDescription(
+        key="new_season",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=lambda c: c.async_new_season(),
+    ),
+    SmartPoolButtonDescription(
+        key="sand_changed",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=lambda c: c.async_maintenance_done(TASK_SAND),
+    ),
+    SmartPoolButtonDescription(
+        key="probe_calibrated",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=lambda c: c.async_maintenance_done(TASK_PROBE),
+    ),
+    SmartPoolButtonDescription(
+        key="seals_checked",
+        entity_category=EntityCategory.CONFIG,
+        press_fn=lambda c: c.async_maintenance_done(TASK_SEALS),
     ),
     SmartPoolButtonDescription(
         key="reset_fault",

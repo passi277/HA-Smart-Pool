@@ -44,6 +44,7 @@ from .const import (
     STATUS_RUNNING_CATCHUP,
     STATUS_RUNNING_CONTINUOUS,
     STATUS_RUNNING_METAL_EX,
+    STATUS_RUNNING_PROGRAM,
     STATUS_RUNNING_SCHEDULE,
     STATUS_RUNNING_SOLAR,
     STATUS_TARGET_REACHED,
@@ -168,6 +169,13 @@ _GUIDANCE_TEXT = {
         "metal_dose": "{ml} ml Metall-Ex bei laufender Pumpe zugeben – erst danach chloren",
         "metal_running": "Metall-Ex wirkt noch {h} h – Pumpe laufen lassen",
         "metal_backwash": "Metall-Ex fertig: Filter rückspülen",
+        "after_shock": "Schockchlorung beendet: Wasserwerte prüfen",
+        "visual_brown": "Wasser bräunlich (Kamera): Eisen – ca. {ml} ml Metall-Ex zugeben",
+        "visual_green": "Wasser grün (Kamera): Algen-Programm starten",
+        "visual_cloudy_ok": "Wasser trüb (Kamera) trotz guter Werte – rückspülen, Sonde prüfen",
+        "visual_cloudy": "Wasser trüb (Kamera): Filter länger laufen lassen",
+        "visual_dirty": "Verschmutzung (Kamera): Skimmer und Boden reinigen",
+        "probe": "Redox reagiert nicht auf Chlor – Sonde reinigen und kalibrieren",
     },
     "en": {
         "ph_high": "pH too high: add about {g} g pH minus",
@@ -179,6 +187,13 @@ _GUIDANCE_TEXT = {
         "metal_dose": "Add {ml} ml metal remover with the pump running – chlorinate afterwards",
         "metal_running": "Metal remover still working for {h} h – keep the pump running",
         "metal_backwash": "Metal remover done: backwash the filter",
+        "after_shock": "Shock chlorination finished: check the water values",
+        "visual_brown": "Water brownish (camera): iron – add about {ml} ml metal remover",
+        "visual_green": "Water green (camera): start the algae program",
+        "visual_cloudy_ok": "Water cloudy (camera) despite good values – backwash, check probe",
+        "visual_cloudy": "Water cloudy (camera): run the filter longer",
+        "visual_dirty": "Dirt (camera): clean skimmer and floor",
+        "probe": "Redox does not react to chlorine – clean and calibrate the probe",
     },
 }
 GUIDANCE_OK = "ok"
@@ -202,6 +217,10 @@ class GuidanceInputs:
     metal_ex_pending_ml: float = 0.0
     metal_ex_hours_left: float = 0.0
     metal_ex_backwash: bool = False
+    metal_ex_pool_ml: float = 0.0
+    after_shock: bool = False
+    visual: tuple[str, ...] = ()
+    probe_suspect: bool = False
     language: str = "en"
 
 
@@ -229,6 +248,20 @@ def guidance(inp: GuidanceInputs) -> str:
         parts.append(text["metal_running"].format(h=f"{inp.metal_ex_hours_left:.0f}"))
     elif inp.metal_ex_backwash:
         parts.append(text["metal_backwash"])
+    if inp.after_shock:
+        parts.append(text["after_shock"])
+
+    values_ok = (
+        inp.ph_minus_g <= 0 and inp.ph_plus_g <= 0 and inp.chlorine_g <= 0 and inp.ph is not None
+    )
+    if "brown" in inp.visual and inp.metal_ex_hours_left <= 0:
+        parts.append(text["visual_brown"].format(ml=f"{inp.metal_ex_pool_ml:.0f}"))
+    if "green" in inp.visual:
+        parts.append(text["visual_green"])
+    if "cloudy" in inp.visual:
+        parts.append(text["visual_cloudy_ok" if values_ok else "visual_cloudy"])
+    if "dirty" in inp.visual:
+        parts.append(text["visual_dirty"])
 
     if inp.ph is None and inp.orp is None:
         return " · ".join(parts) or GUIDANCE_UNKNOWN
@@ -240,6 +273,8 @@ def guidance(inp: GuidanceInputs) -> str:
         parts.append(text["orp_low"].format(g=f"{inp.chlorine_g:.0f}"))
     elif inp.orp is not None and inp.orp > ORP_RANGES[2]:
         parts.append(text["orp_high"])
+    if inp.probe_suspect:
+        parts.append(text["probe"])
     return " · ".join(parts) or GUIDANCE_OK
 
 
@@ -438,6 +473,7 @@ class PumpInputs:
     fault: bool = False
     last_switch: datetime | None = None
     metal_ex_active: bool = False
+    program_active: bool = False
 
 
 @dataclass(slots=True)
@@ -466,6 +502,9 @@ def decide_pump(inp: PumpInputs) -> PumpDecision:
 def _decide_for_mode(inp: PumpInputs) -> PumpDecision:
     if inp.mode == MODE_CONTINUOUS:
         return PumpDecision(True, STATUS_RUNNING_CONTINUOUS)
+
+    if inp.program_active:
+        return PumpDecision(True, STATUS_RUNNING_PROGRAM)
 
     # Metal remover needs the filter running for the whole treatment.
     if inp.metal_ex_active:

@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
-from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
@@ -35,20 +33,6 @@ from custom_components.smart_pool.const import (
 )
 
 PUMP = "input_boolean.pump"
-
-
-@pytest.fixture
-async def sources(hass: HomeAssistant) -> None:
-    """Create the source entities a real installation would have."""
-    assert await async_setup_component(hass, "input_boolean", {"input_boolean": {"pump": {}}})
-    hass.states.async_set("sensor.ph", "7.2")
-    hass.states.async_set("sensor.orp", "535")
-    hass.states.async_set("sensor.water_temp", "15")
-    hass.states.async_set("sensor.pump_power", "0")
-    hass.states.async_set("sensor.pump_energy", "100.0")
-    hass.states.async_set("sensor.solar", "0")
-    hass.states.async_set("sensor.air_temp", "10")
-    await hass.async_block_till_done()
 
 
 def _entry(**options) -> MockConfigEntry:

@@ -23,6 +23,11 @@ CONF_AIR_TEMP_ENTITY: Final = "air_temp_entity"
 CONF_LAST_MEASUREMENT_ENTITY: Final = "last_measurement_entity"
 CONF_WEATHER_ENTITY: Final = "weather_entity"
 CONF_RAIN_ENTITY: Final = "rain_entity"
+CONF_VISUAL_ENTITY: Final = "visual_entity"
+CONF_MOTION_ENTITY: Final = "motion_entity"
+CONF_PRESENCE_ENTITY: Final = "presence_entity"
+CONF_SHOPPING_LIST_ENTITY: Final = "shopping_list_entity"
+CONF_PUMP_WIFI_ENTITY: Final = "pump_wifi_entity"
 
 OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PUMP_POWER_ENTITY,
@@ -33,6 +38,11 @@ OPTIONAL_ENTITY_KEYS: Final = (
     CONF_LAST_MEASUREMENT_ENTITY,
     CONF_WEATHER_ENTITY,
     CONF_RAIN_ENTITY,
+    CONF_VISUAL_ENTITY,
+    CONF_MOTION_ENTITY,
+    CONF_PRESENCE_ENTITY,
+    CONF_SHOPPING_LIST_ENTITY,
+    CONF_PUMP_WIFI_ENTITY,
 )
 
 # --- Tunable parameters (options) ------------------------------------------
@@ -54,6 +64,10 @@ CONF_HEAVY_RAIN: Final = "heavy_rain"
 CONF_METAL_EX_FRESH: Final = "metal_ex_fresh"
 CONF_METAL_EX_POOL: Final = "metal_ex_pool"
 CONF_METAL_EX_HOURS: Final = "metal_ex_hours"
+CONF_SAND_DAYS: Final = "sand_days"
+CONF_PROBE_DAYS: Final = "probe_days"
+CONF_SEALS_DAYS: Final = "seals_days"
+CONF_OUTAGE_LIMIT: Final = "outage_limit"
 
 DEFAULTS: Final[dict[str, float | str]] = {
     CONF_VOLUME: 30.0,
@@ -75,6 +89,10 @@ DEFAULTS: Final[dict[str, float | str]] = {
     CONF_METAL_EX_FRESH: 60.0,
     CONF_METAL_EX_POOL: 30.0,
     CONF_METAL_EX_HOURS: 48.0,
+    CONF_SAND_DAYS: 730.0,
+    CONF_PROBE_DAYS: 90.0,
+    CONF_SEALS_DAYS: 365.0,
+    CONF_OUTAGE_LIMIT: 5.0,
 }
 
 # Without a configured surface the area is estimated from the volume.
@@ -141,6 +159,7 @@ STATUS_FROST_PROTECTION: Final = "frost_protection"
 STATUS_WINTER_IDLE: Final = "winter_idle"
 STATUS_NO_AIR_TEMP: Final = "no_air_temp"
 STATUS_RUNNING_METAL_EX: Final = "running_metal_ex"
+STATUS_RUNNING_PROGRAM: Final = "running_program"
 
 STATUSES: Final = (
     STATUS_MANUAL,
@@ -158,6 +177,7 @@ STATUSES: Final = (
     STATUS_WINTER_IDLE,
     STATUS_NO_AIR_TEMP,
     STATUS_RUNNING_METAL_EX,
+    STATUS_RUNNING_PROGRAM,
 )
 
 # --- Event types fired on the bus -----------------------------------------
@@ -172,6 +192,27 @@ EVENT_HEAVY_RAIN: Final = "heavy_rain"
 EVENT_REFILLED: Final = "refilled"
 EVENT_METAL_EX_ADDED: Final = "metal_ex_added"
 EVENT_METAL_EX_DONE: Final = "metal_ex_done"
+EVENT_DOSE_LOGGED: Final = "dose_logged"
+EVENT_PROBE_CHECK: Final = "probe_check"
+EVENT_STOCK_LOW: Final = "stock_low"
+EVENT_PROGRAM_STARTED: Final = "program_started"
+EVENT_PROGRAM_DONE: Final = "program_done"
+EVENT_SEASON: Final = "season"
+EVENT_MAINTENANCE_DUE: Final = "maintenance_due"
+EVENT_CONNECTION_UNSTABLE: Final = "connection_unstable"
+EVENT_WEEKLY_REPORT: Final = "weekly_report"
+EVENT_VISUAL_FINDING: Final = "visual_finding"
+EVENT_MOTION_WHILE_AWAY: Final = "motion_while_away"
+
+MOTION_COOLDOWN_SECONDS: Final = 600
+
+SERVICE_LOG_DOSE: Final = "log_dose"
+SERVICE_START_PROGRAM: Final = "start_program"
+ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
+ATTR_PRODUCT: Final = "product"
+ATTR_AMOUNT: Final = "amount"
+ATTR_PROGRAM: Final = "program"
+ATTR_HOURS: Final = "hours"
 
 # --- Weather ---------------------------------------------------------------
 WEATHER_REFRESH_SECONDS: Final = 1800

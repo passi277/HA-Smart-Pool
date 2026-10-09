@@ -23,7 +23,12 @@
           "air_temp_entity": "Outdoor temperature",
           "last_measurement_entity": "Last measurement timestamp",
           "weather_entity": "Weather forecast",
-          "rain_entity": "Rain gauge (mm)"
+          "rain_entity": "Rain gauge (mm)",
+          "pump_wifi_entity": "Pump plug Wi-Fi signal",
+          "visual_entity": "Camera / AI finding (text)",
+          "motion_entity": "Motion at the pool",
+          "presence_entity": "Presence (home/away)",
+          "shopping_list_entity": "Shopping list"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -33,6 +38,9 @@
           "air_temp_entity": "Needed for winter / frost protection.",
           "last_measurement_entity": "If empty, the last report of the pH sensor is used.",
           "weather_entity": "Rain, heat and UV forecast for runtime and hints.",
+          "visual_entity": "Text like 'water clear' – cloudy, green, brown or dirty is detected.",
+          "presence_entity": "Motion is reported when this is not 'home'/'on'.",
+          "shopping_list_entity": "Low chemicals are added automatically.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast."
         }
       }
@@ -64,6 +72,11 @@
           "last_measurement_entity": "Last measurement timestamp",
           "weather_entity": "Weather forecast",
           "rain_entity": "Rain gauge (mm)",
+          "pump_wifi_entity": "Pump plug Wi-Fi signal",
+          "visual_entity": "Camera / AI finding (text)",
+          "motion_entity": "Motion at the pool",
+          "presence_entity": "Presence (home/away)",
+          "shopping_list_entity": "Shopping list",
           "pump_flow": "Pump flow rate (0 = unknown)",
           "min_runtime": "Minimum daily runtime",
           "max_runtime": "Maximum daily runtime",
@@ -81,7 +94,11 @@
           "heavy_rain": "Heavy rain from (24 h)",
           "metal_ex_fresh": "Metal remover per m³ fresh water",
           "metal_ex_pool": "Metal remover per m³ pool (preventive)",
-          "metal_ex_hours": "Filter runtime after metal remover"
+          "metal_ex_hours": "Filter runtime after metal remover",
+          "sand_days": "Replace filter sand every",
+          "probe_days": "Calibrate probe every",
+          "seals_days": "Check seals every",
+          "outage_limit": "Pump outages per day before warning (0 = off)"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -91,6 +108,9 @@
           "air_temp_entity": "Needed for winter / frost protection.",
           "last_measurement_entity": "If empty, the last report of the pH sensor is used.",
           "weather_entity": "Rain, heat and UV forecast for runtime and hints.",
+          "visual_entity": "Text like 'water clear' – cloudy, green, brown or dirty is detected.",
+          "presence_entity": "Motion is reported when this is not 'home'/'on'.",
+          "shopping_list_entity": "Low chemicals are added automatically.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.",
           "pump_flow": "If set, the runtime covers at least one full water turnover.",
           "chlorine_strength": "e.g. 56 % dichlor granulate, 65–70 % calcium hypochlorite, 90 % trichlor tablets.",
@@ -149,7 +169,8 @@
           "frost_protection": "Frost protection",
           "winter_idle": "Winter – idle",
           "no_air_temp": "No outdoor temperature",
-          "running_metal_ex": "Running (metal remover)"
+          "running_metal_ex": "Running (metal remover)",
+          "running_program": "Running (program)"
         }
       },
       "recommended_runtime": {
@@ -197,6 +218,57 @@
       "metal_ex_remaining": {
         "name": "Metal remover remaining"
       },
+      "last_dose": {
+        "name": "Last dose"
+      },
+      "consumption_chlorine": {
+        "name": "Consumption Chlorine granules"
+      },
+      "consumption_shock": {
+        "name": "Consumption Shock chlorine"
+      },
+      "consumption_ph_minus": {
+        "name": "Consumption pH minus"
+      },
+      "consumption_ph_plus": {
+        "name": "Consumption pH plus"
+      },
+      "consumption_metal_ex": {
+        "name": "Consumption Metal remover"
+      },
+      "program_remaining": {
+        "name": "Program remaining"
+      },
+      "season": {
+        "name": "Season",
+        "state": {
+          "swim": "Swimming season",
+          "winterize": "Winterizing recommended",
+          "winter": "Winter",
+          "season_start": "Season start recommended"
+        }
+      },
+      "swim_score": {
+        "name": "Swim weather"
+      },
+      "solar_energy_today": {
+        "name": "Solar energy today"
+      },
+      "solar_share_today": {
+        "name": "Solar share today"
+      },
+      "solar_savings_today": {
+        "name": "Solar savings today"
+      },
+      "solar_savings_rate": {
+        "name": "Solar savings now"
+      },
+      "weekly_report": {
+        "name": "Weekly report"
+      },
+      "pump_outages_today": {
+        "name": "Pump outages today"
+      },
       "energy_today": {
         "name": "Energy today"
       },
@@ -220,6 +292,24 @@
       "heavy_rain": {
         "name": "Heavy rain"
       },
+      "probe_check": {
+        "name": "Check probe"
+      },
+      "stock_low": {
+        "name": "Stock low"
+      },
+      "maintenance_due": {
+        "name": "Maintenance due"
+      },
+      "visual_finding": {
+        "name": "Camera finding"
+      },
+      "motion_while_away": {
+        "name": "Motion while away"
+      },
+      "connection_unstable": {
+        "name": "Pump connection unstable"
+      },
       "metal_ex_active": {
         "name": "Metal remover treatment"
       }
@@ -235,6 +325,31 @@
           "continuous": "Continuous",
           "winter": "Winter / frost protection"
         }
+      },
+      "program": {
+        "name": "Program",
+        "state": {
+          "none": "None",
+          "boost": "Boost",
+          "shock": "Shock chlorination",
+          "new_fill": "New fill",
+          "algae": "Algae"
+        }
+      },
+      "dose_product": {
+        "name": "Dose product",
+        "state": {
+          "chlorine": "Chlorine granules",
+          "shock": "Shock chlorine",
+          "ph_minus": "pH minus",
+          "ph_plus": "pH plus",
+          "metal_ex": "Metal remover"
+        }
+      }
+    },
+    "todo": {
+      "tasks": {
+        "name": "Tasks"
       }
     },
     "switch": {
@@ -256,6 +371,27 @@
       },
       "refill_cm": {
         "name": "Refill amount"
+      },
+      "dose_amount": {
+        "name": "Dose amount"
+      },
+      "boost_hours": {
+        "name": "Boost duration"
+      },
+      "stock_chlorine": {
+        "name": "Stock Chlorine granules"
+      },
+      "stock_shock": {
+        "name": "Stock Shock chlorine"
+      },
+      "stock_ph_minus": {
+        "name": "Stock pH minus"
+      },
+      "stock_ph_plus": {
+        "name": "Stock pH plus"
+      },
+      "stock_metal_ex": {
+        "name": "Stock Metal remover"
       }
     },
     "button": {
@@ -270,6 +406,90 @@
       },
       "metal_ex_added": {
         "name": "Metal remover added"
+      },
+      "log_dose": {
+        "name": "Log dose"
+      },
+      "new_season": {
+        "name": "New season"
+      },
+      "sand_changed": {
+        "name": "Filter sand replaced"
+      },
+      "probe_calibrated": {
+        "name": "Probe calibrated"
+      },
+      "seals_checked": {
+        "name": "Seals checked"
+      }
+    }
+  },
+  "issues": {
+    "pump_unstable": {
+      "title": "{name}: pump connection unstable",
+      "description": "The pump switch was unavailable {count} times today (Wi-Fi signal: {wifi}). Check the Wi-Fi coverage or power supply of the plug."
+    }
+  },
+  "exceptions": {
+    "entry_not_loaded": {
+      "message": "Smart Pool entry not found or not loaded."
+    }
+  },
+  "selector": {
+    "product": {
+      "options": {
+        "chlorine": "Chlorine granules",
+        "shock": "Shock chlorine",
+        "ph_minus": "pH minus",
+        "ph_plus": "pH plus",
+        "metal_ex": "Metal remover"
+      }
+    },
+    "program": {
+      "options": {
+        "none": "None",
+        "boost": "Boost",
+        "shock": "Shock chlorination",
+        "new_fill": "New fill",
+        "algae": "Algae"
+      }
+    }
+  },
+  "services": {
+    "log_dose": {
+      "name": "Log dose",
+      "description": "Logs a chemical addition (updates consumption, stock and the probe check).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pool",
+          "description": "Smart Pool entry."
+        },
+        "product": {
+          "name": "Product",
+          "description": "What was added."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Grams (ml for metal remover). Empty = recommended amount."
+        }
+      }
+    },
+    "start_program": {
+      "name": "Start program",
+      "description": "Starts a special program with automatic end; 'none' cancels.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pool",
+          "description": "Smart Pool entry."
+        },
+        "program": {
+          "name": "Program",
+          "description": "Program to start."
+        },
+        "hours": {
+          "name": "Hours",
+          "description": "Optional duration; default depends on the program."
+        }
       }
     }
   }

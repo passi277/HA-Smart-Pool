@@ -1,0 +1,42 @@
+{
+  "entity": {
+    "sensor": {
+      "water_quality": { "default": "mdi:water-check" },
+      "guidance": { "default": "mdi:flask-outline" },
+      "pump_status": { "default": "mdi:pump" },
+      "recommended_runtime": { "default": "mdi:timer-sand" },
+      "runtime_today": { "default": "mdi:timer-outline" },
+      "remaining_runtime": { "default": "mdi:timer-sand-paused" },
+      "chlorine_dose": { "default": "mdi:bottle-tonic-plus" },
+      "metal_ex_dose": { "default": "mdi:magnet" },
+      "weather_hint": { "default": "mdi:weather-partly-rainy" },
+      "season": { "default": "mdi:calendar-star" },
+      "swim_score": { "default": "mdi:swim" },
+      "weekly_report": { "default": "mdi:file-chart-outline" },
+      "last_dose": { "default": "mdi:notebook-edit-outline" },
+      "program_remaining": { "default": "mdi:progress-clock" },
+      "solar_share_today": { "default": "mdi:solar-power" },
+      "solar_savings_rate": { "default": "mdi:cash-check" },
+      "pump_outages_today": { "default": "mdi:wifi-alert" }
+    },
+    "select": {
+      "mode": { "default": "mdi:pool" },
+      "program": { "default": "mdi:playlist-play" },
+      "dose_product": { "default": "mdi:flask" }
+    },
+    "button": {
+      "backwash_done": { "default": "mdi:water-sync" },
+      "refilled": { "default": "mdi:water-plus" },
+      "metal_ex_added": { "default": "mdi:magnet-on" },
+      "log_dose": { "default": "mdi:notebook-plus-outline" },
+      "new_season": { "default": "mdi:calendar-refresh" }
+    },
+    "todo": {
+      "tasks": { "default": "mdi:clipboard-list-outline" }
+    }
+  },
+  "services": {
+    "log_dose": { "service": "mdi:notebook-plus-outline" },
+    "start_program": { "service": "mdi:playlist-play" }
+  }
+}

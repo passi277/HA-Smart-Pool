@@ -23,7 +23,12 @@
           "air_temp_entity": "Außentemperatur",
           "last_measurement_entity": "Zeitpunkt letzte Messung",
           "weather_entity": "Wettervorhersage",
-          "rain_entity": "Regenmesser (mm)"
+          "rain_entity": "Regenmesser (mm)",
+          "pump_wifi_entity": "WLAN-Signal des Pumpen-Steckers",
+          "visual_entity": "Kamera-/KI-Befund (Text)",
+          "motion_entity": "Bewegung am Pool",
+          "presence_entity": "Anwesenheit (zuhause/weg)",
+          "shopping_list_entity": "Einkaufsliste"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -33,6 +38,9 @@
           "air_temp_entity": "Für Winter / Frostschutz.",
           "last_measurement_entity": "Leer = letzte Meldung des pH-Sensors.",
           "weather_entity": "Regen-, Hitze- und UV-Vorhersage für Laufzeit und Hinweise.",
+          "visual_entity": "Text wie „Wasser klar“ – trüb, grün, braun oder Schmutz wird erkannt.",
+          "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
+          "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."
         }
       }
@@ -64,6 +72,11 @@
           "last_measurement_entity": "Zeitpunkt letzte Messung",
           "weather_entity": "Wettervorhersage",
           "rain_entity": "Regenmesser (mm)",
+          "pump_wifi_entity": "WLAN-Signal des Pumpen-Steckers",
+          "visual_entity": "Kamera-/KI-Befund (Text)",
+          "motion_entity": "Bewegung am Pool",
+          "presence_entity": "Anwesenheit (zuhause/weg)",
+          "shopping_list_entity": "Einkaufsliste",
           "pump_flow": "Pumpen-Fördermenge (0 = unbekannt)",
           "min_runtime": "Minimale Tageslaufzeit",
           "max_runtime": "Maximale Tageslaufzeit",
@@ -81,7 +94,11 @@
           "heavy_rain": "Starkregen ab (24 h)",
           "metal_ex_fresh": "Metall-Ex pro m³ Frischwasser",
           "metal_ex_pool": "Metall-Ex pro m³ Becken (vorbeugend)",
-          "metal_ex_hours": "Filterlaufzeit nach Metall-Ex"
+          "metal_ex_hours": "Filterlaufzeit nach Metall-Ex",
+          "sand_days": "Filtersand wechseln alle",
+          "probe_days": "Sonde kalibrieren alle",
+          "seals_days": "Dichtungen prüfen alle",
+          "outage_limit": "Pumpen-Ausfälle pro Tag bis zur Warnung (0 = aus)"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -91,6 +108,9 @@
           "air_temp_entity": "Für Winter / Frostschutz.",
           "last_measurement_entity": "Leer = letzte Meldung des pH-Sensors.",
           "weather_entity": "Regen-, Hitze- und UV-Vorhersage für Laufzeit und Hinweise.",
+          "visual_entity": "Text wie „Wasser klar“ – trüb, grün, braun oder Schmutz wird erkannt.",
+          "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
+          "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt.",
           "pump_flow": "Wenn gesetzt, wird mindestens einmal das ganze Wasser umgewälzt.",
           "chlorine_strength": "z. B. 56 % Dichlor-Granulat, 65–70 % Calciumhypochlorit, 90 % Trichlor-Tabletten.",
@@ -149,7 +169,8 @@
           "frost_protection": "Frostschutz",
           "winter_idle": "Winter – Pause",
           "no_air_temp": "Keine Außentemperatur",
-          "running_metal_ex": "Läuft (Metall-Ex)"
+          "running_metal_ex": "Läuft (Metall-Ex)",
+          "running_program": "Läuft (Programm)"
         }
       },
       "recommended_runtime": {
@@ -197,6 +218,57 @@
       "metal_ex_remaining": {
         "name": "Metall-Ex Restzeit"
       },
+      "last_dose": {
+        "name": "Letzte Zugabe"
+      },
+      "consumption_chlorine": {
+        "name": "Verbrauch Chlor-Granulat"
+      },
+      "consumption_shock": {
+        "name": "Verbrauch Chlor-Schock"
+      },
+      "consumption_ph_minus": {
+        "name": "Verbrauch pH-Minus"
+      },
+      "consumption_ph_plus": {
+        "name": "Verbrauch pH-Plus"
+      },
+      "consumption_metal_ex": {
+        "name": "Verbrauch Metall-Ex"
+      },
+      "program_remaining": {
+        "name": "Programm Restzeit"
+      },
+      "season": {
+        "name": "Saison",
+        "state": {
+          "swim": "Badesaison",
+          "winterize": "Einwintern empfohlen",
+          "winter": "Winter",
+          "season_start": "Saisonstart empfohlen"
+        }
+      },
+      "swim_score": {
+        "name": "Badewetter"
+      },
+      "solar_energy_today": {
+        "name": "Solarstrom heute"
+      },
+      "solar_share_today": {
+        "name": "Solaranteil heute"
+      },
+      "solar_savings_today": {
+        "name": "Solar-Ersparnis heute"
+      },
+      "solar_savings_rate": {
+        "name": "Solar-Ersparnis aktuell"
+      },
+      "weekly_report": {
+        "name": "Wochenbericht"
+      },
+      "pump_outages_today": {
+        "name": "Pumpen-Ausfälle heute"
+      },
       "energy_today": {
         "name": "Energie heute"
       },
@@ -220,6 +292,24 @@
       "heavy_rain": {
         "name": "Starkregen"
       },
+      "probe_check": {
+        "name": "Sonde prüfen"
+      },
+      "stock_low": {
+        "name": "Vorrat knapp"
+      },
+      "maintenance_due": {
+        "name": "Wartung fällig"
+      },
+      "visual_finding": {
+        "name": "Kamera-Befund auffällig"
+      },
+      "motion_while_away": {
+        "name": "Bewegung bei Abwesenheit"
+      },
+      "connection_unstable": {
+        "name": "Pumpen-Verbindung instabil"
+      },
       "metal_ex_active": {
         "name": "Metall-Ex-Behandlung"
       }
@@ -235,6 +325,31 @@
           "continuous": "Dauerbetrieb",
           "winter": "Winter / Frostschutz"
         }
+      },
+      "program": {
+        "name": "Programm",
+        "state": {
+          "none": "Keines",
+          "boost": "Boost",
+          "shock": "Schockchlorung",
+          "new_fill": "Neubefüllung",
+          "algae": "Algen"
+        }
+      },
+      "dose_product": {
+        "name": "Pflegemittel",
+        "state": {
+          "chlorine": "Chlor-Granulat",
+          "shock": "Chlor-Schock",
+          "ph_minus": "pH-Minus",
+          "ph_plus": "pH-Plus",
+          "metal_ex": "Metall-Ex"
+        }
+      }
+    },
+    "todo": {
+      "tasks": {
+        "name": "Aufgaben"
       }
     },
     "switch": {
@@ -256,6 +371,27 @@
       },
       "refill_cm": {
         "name": "Nachfüllmenge"
+      },
+      "dose_amount": {
+        "name": "Zugabemenge"
+      },
+      "boost_hours": {
+        "name": "Boost-Dauer"
+      },
+      "stock_chlorine": {
+        "name": "Vorrat Chlor-Granulat"
+      },
+      "stock_shock": {
+        "name": "Vorrat Chlor-Schock"
+      },
+      "stock_ph_minus": {
+        "name": "Vorrat pH-Minus"
+      },
+      "stock_ph_plus": {
+        "name": "Vorrat pH-Plus"
+      },
+      "stock_metal_ex": {
+        "name": "Vorrat Metall-Ex"
       }
     },
     "button": {
@@ -270,6 +406,90 @@
       },
       "metal_ex_added": {
         "name": "Metall-Ex zugegeben"
+      },
+      "log_dose": {
+        "name": "Zugabe erfassen"
+      },
+      "new_season": {
+        "name": "Neue Saison"
+      },
+      "sand_changed": {
+        "name": "Filtersand gewechselt"
+      },
+      "probe_calibrated": {
+        "name": "Sonde kalibriert"
+      },
+      "seals_checked": {
+        "name": "Dichtungen geprüft"
+      }
+    }
+  },
+  "issues": {
+    "pump_unstable": {
+      "title": "{name}: Pumpen-Verbindung instabil",
+      "description": "Der Pumpen-Schalter war heute {count}× nicht erreichbar (WLAN-Signal: {wifi}). Prüfe den WLAN-Empfang oder die Stromversorgung des Steckers."
+    }
+  },
+  "exceptions": {
+    "entry_not_loaded": {
+      "message": "Smart-Pool-Eintrag nicht gefunden oder nicht geladen."
+    }
+  },
+  "selector": {
+    "product": {
+      "options": {
+        "chlorine": "Chlor-Granulat",
+        "shock": "Chlor-Schock",
+        "ph_minus": "pH-Minus",
+        "ph_plus": "pH-Plus",
+        "metal_ex": "Metall-Ex"
+      }
+    },
+    "program": {
+      "options": {
+        "none": "Keines",
+        "boost": "Boost",
+        "shock": "Schockchlorung",
+        "new_fill": "Neubefüllung",
+        "algae": "Algen"
+      }
+    }
+  },
+  "services": {
+    "log_dose": {
+      "name": "Zugabe erfassen",
+      "description": "Erfasst eine Pflegemittel-Zugabe (Verbrauch, Vorrat und Sonden-Check).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pool",
+          "description": "Smart-Pool-Eintrag."
+        },
+        "product": {
+          "name": "Pflegemittel",
+          "description": "Was zugegeben wurde."
+        },
+        "amount": {
+          "name": "Menge",
+          "description": "Gramm (ml bei Metall-Ex). Leer = empfohlene Menge."
+        }
+      }
+    },
+    "start_program": {
+      "name": "Programm starten",
+      "description": "Startet ein Sonderprogramm mit automatischem Ende; „Keines“ bricht ab.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pool",
+          "description": "Smart-Pool-Eintrag."
+        },
+        "program": {
+          "name": "Programm",
+          "description": "Zu startendes Programm."
+        },
+        "hours": {
+          "name": "Stunden",
+          "description": "Optionale Dauer; Standard je nach Programm."
+        }
       }
     }
   }

@@ -1,0 +1,218 @@
+"""Generate strings.json and translations: python scripts/gen_translations.py de|en > file."""
+import json, sys
+lang = sys.argv[1]
+D = lang == "de"
+def t(en, de): return de if D else en
+
+quality = {"ok": t("OK","OK"), "check": t("Check","Prüfen"), "critical": t("Critical","Kritisch"), "unknown": t("Unknown","Unbekannt")}
+status = {
+ "manual": t("Manual – not controlled","Manuell – keine Steuerung"),
+ "off": t("Off","Aus"),
+ "fault": t("Fault – pump stopped","Störung – Pumpe gestoppt"),
+ "pump_unavailable": t("Pump unavailable","Pumpe nicht erreichbar"),
+ "target_reached": t("Daily runtime reached","Tageslaufzeit erreicht"),
+ "waiting_schedule": t("Waiting for start time","Wartet auf Startzeit"),
+ "running_schedule": t("Running (schedule)","Läuft (Zeitplan)"),
+ "waiting_sun": t("Waiting for solar surplus","Wartet auf Solarüberschuss"),
+ "running_solar": t("Running (solar)","Läuft (Solar)"),
+ "running_catchup": t("Running (catch-up)","Läuft (Nachholen)"),
+ "running_continuous": t("Running (continuous)","Läuft (Dauerbetrieb)"),
+ "frost_protection": t("Frost protection","Frostschutz"),
+ "winter_idle": t("Winter – idle","Winter – Pause"),
+ "no_air_temp": t("No outdoor temperature","Keine Außentemperatur"),
+ "running_metal_ex": t("Running (metal remover)","Läuft (Metall-Ex)"),
+ "running_program": t("Running (program)","Läuft (Programm)"),
+}
+products = {"chlorine": t("Chlorine granules","Chlor-Granulat"), "shock": t("Shock chlorine","Chlor-Schock"),
+ "ph_minus": t("pH minus","pH-Minus"), "ph_plus": t("pH plus","pH-Plus"), "metal_ex": t("Metal remover","Metall-Ex")}
+programs = {"none": t("None","Keines"), "boost": t("Boost","Boost"), "shock": t("Shock chlorination","Schockchlorung"),
+ "new_fill": t("New fill","Neubefüllung"), "algae": t("Algae","Algen")}
+seasons = {"swim": t("Swimming season","Badesaison"), "winterize": t("Winterizing recommended","Einwintern empfohlen"),
+ "winter": t("Winter","Winter"), "season_start": t("Season start recommended","Saisonstart empfohlen")}
+modes = {
+ "manual": t("Manual","Manuell"), "off": t("Off","Aus"), "auto": t("Automatic (schedule)","Automatik (Zeitplan)"),
+ "solar": t("Solar","Solar"), "continuous": t("Continuous","Dauerbetrieb"), "winter": t("Winter / frost protection","Winter / Frostschutz"),
+}
+core = {
+ "name": t("Name","Name"),
+ "volume": t("Pool volume","Poolvolumen"),
+ "ph_entity": t("pH sensor","pH-Sensor"),
+ "orp_entity": t("Redox (ORP) sensor","Redox-Sensor (ORP)"),
+ "water_temp_entity": t("Water temperature sensor","Wassertemperatur-Sensor"),
+ "pump_entity": t("Pump switch","Pumpen-Schalter"),
+}
+opt = {
+ "pump_power_entity": t("Pump power (W)","Pumpenleistung (W)"),
+ "pump_energy_entity": t("Pump energy meter (kWh)","Pumpen-Energiezähler (kWh)"),
+ "solar_power_entity": t("Solar power (W)","Solarleistung (W)"),
+ "battery_soc_entity": t("Battery state of charge","Akku-Ladestand"),
+ "air_temp_entity": t("Outdoor temperature","Außentemperatur"),
+ "last_measurement_entity": t("Last measurement timestamp","Zeitpunkt letzte Messung"),
+ "weather_entity": t("Weather forecast","Wettervorhersage"),
+ "rain_entity": t("Rain gauge (mm)","Regenmesser (mm)"),
+ "pump_wifi_entity": t("Pump plug Wi-Fi signal","WLAN-Signal des Pumpen-Steckers"),
+ "visual_entity": t("Camera / AI finding (text)","Kamera-/KI-Befund (Text)"),
+ "motion_entity": t("Motion at the pool","Bewegung am Pool"),
+ "presence_entity": t("Presence (home/away)","Anwesenheit (zuhause/weg)"),
+ "shopping_list_entity": t("Shopping list","Einkaufsliste"),
+}
+opt_desc = {
+ "pump_power_entity": t("Needed for dry-run protection.","Für den Trockenlaufschutz."),
+ "pump_energy_entity": t("Used for energy and cost today.","Für Energie und Kosten heute."),
+ "solar_power_entity": t("Needed for the solar mode.","Für den Solar-Modus."),
+ "battery_soc_entity": t("Optional: solar mode only starts above the minimum charge.","Optional: Solar-Modus startet erst ab Mindest-Ladestand."),
+ "air_temp_entity": t("Needed for winter / frost protection.","Für Winter / Frostschutz."),
+ "last_measurement_entity": t("If empty, the last report of the pH sensor is used.","Leer = letzte Meldung des pH-Sensors."),
+ "weather_entity": t("Rain, heat and UV forecast for runtime and hints.","Regen-, Hitze- und UV-Vorhersage für Laufzeit und Hinweise."),
+ "visual_entity": t("Text like 'water clear' – cloudy, green, brown or dirty is detected.","Text wie „Wasser klar“ – trüb, grün, braun oder Schmutz wird erkannt."),
+ "presence_entity": t("Motion is reported when this is not 'home'/'on'.","Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist."),
+ "shopping_list_entity": t("Low chemicals are added automatically.","Knappe Pflegemittel werden automatisch eingetragen."),
+ "rain_entity": t("Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.","Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."),
+}
+params = {
+ "pump_flow": t("Pump flow rate (0 = unknown)","Pumpen-Fördermenge (0 = unbekannt)"),
+ "min_runtime": t("Minimum daily runtime","Minimale Tageslaufzeit"),
+ "max_runtime": t("Maximum daily runtime","Maximale Tageslaufzeit"),
+ "chlorine_strength": t("Active chlorine content of product","Aktivchlor-Gehalt des Produkts"),
+ "chlorine_step": t("Chlorine increase per dose","Chlor-Anhebung pro Dosis"),
+ "dry_run_power": t("Dry-run limit (0 = off)","Trockenlauf-Grenze (0 = aus)"),
+ "backwash_hours": t("Backwash after pump hours","Rückspülen nach Pumpenstunden"),
+ "backwash_days": t("Backwash at the latest after","Rückspülen spätestens nach"),
+ "solar_threshold": t("Solar start threshold","Solar-Startschwelle"),
+ "battery_min_soc": t("Minimum battery charge for solar","Mindest-Akkustand für Solar"),
+ "catchup_time": t("Catch-up from (solar mode)","Nachholen ab (Solar-Modus)"),
+ "frost_temp": t("Frost protection below","Frostschutz unter"),
+ "stale_hours": t("Measurement stale after","Messung veraltet nach"),
+ "surface": t("Water surface (0 = estimate)","Wasserfläche (0 = schätzen)"),
+ "heavy_rain": t("Heavy rain from (24 h)","Starkregen ab (24 h)"),
+ "metal_ex_fresh": t("Metal remover per m³ fresh water","Metall-Ex pro m³ Frischwasser"),
+ "metal_ex_pool": t("Metal remover per m³ pool (preventive)","Metall-Ex pro m³ Becken (vorbeugend)"),
+ "metal_ex_hours": t("Filter runtime after metal remover","Filterlaufzeit nach Metall-Ex"),
+ "sand_days": t("Replace filter sand every","Filtersand wechseln alle"),
+ "probe_days": t("Calibrate probe every","Sonde kalibrieren alle"),
+ "seals_days": t("Check seals every","Dichtungen prüfen alle"),
+ "outage_limit": t("Pump outages per day before warning (0 = off)","Pumpen-Ausfälle pro Tag bis zur Warnung (0 = aus)"),
+}
+params_desc = {
+ "pump_flow": t("If set, the runtime covers at least one full water turnover.","Wenn gesetzt, wird mindestens einmal das ganze Wasser umgewälzt."),
+ "chlorine_strength": t("e.g. 56 % dichlor granulate, 65–70 % calcium hypochlorite, 90 % trichlor tablets.","z. B. 56 % Dichlor-Granulat, 65–70 % Calciumhypochlorit, 90 % Trichlor-Tabletten."),
+ "dry_run_power": t("Pump is stopped if power stays below this value for 2 minutes.","Pumpe wird gestoppt, wenn die Leistung 2 Minuten darunter liegt."),
+ "surface": t("Used for rain and refill litres (1 mm rain = 1 l per m²).","Für Regen- und Nachfüll-Liter (1 mm Regen = 1 l pro m²)."),
+ "metal_ex_fresh": t("Steinbach Metall-EX: 30–60 ml per m³; use the upper value for iron-rich well water.","Steinbach Metall-EX: 30–60 ml pro m³; bei eisenhaltigem Brunnenwasser den oberen Wert."),
+ "metal_ex_hours": t("The pump runs continuously this long after dosing (Steinbach: at least 48 h), then backwash.","So lange läuft die Pumpe nach der Zugabe durch (Steinbach: mind. 48 h), danach rückspülen."),
+ "catchup_time": t("If the daily runtime is not reached by then, the pump runs on grid power.","Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom."),
+}
+out = {
+ "config": {
+  "step": {
+   "user": {"title": t("Set up pool","Pool einrichten"),
+            "description": t("Choose the water sensors and the pump switch. The integration starts in manual mode and does not switch anything until you pick another mode.","Wähle die Wasser-Sensoren und den Pumpen-Schalter. Die Integration startet im Modus Manuell und schaltet nichts, bis du einen anderen Modus wählst."),
+            "data": core},
+   "optional": {"title": t("Optional sensors","Optionale Sensoren"), "data": opt, "data_description": opt_desc},
+  },
+  "abort": {"already_configured": t("This pump is already configured.","Diese Pumpe ist bereits eingerichtet.")},
+ },
+ "options": {
+  "step": {
+   "init": {"title": t("Pool","Pool"), "data": {k:v for k,v in core.items() if k!="name"}},
+   "settings": {"title": t("Sensors and parameters","Sensoren und Parameter"),
+                "data": {**opt, **params}, "data_description": {**opt_desc, **params_desc}},
+  }
+ },
+ "entity": {
+  "sensor": {
+   "water_quality": {"name": t("Water quality","Wasserqualität"), "state": quality},
+   "ph_status": {"name": t("pH status","pH-Status"), "state": quality},
+   "orp_status": {"name": t("Redox status","Redox-Status"), "state": quality},
+   "pump_status": {"name": t("Pump status","Pumpenstatus"), "state": status},
+   "recommended_runtime": {"name": t("Recommended runtime","Empfohlene Laufzeit")},
+   "guidance": {"name": t("Guidance","Handlungshinweis")},
+   "runtime_today": {"name": t("Runtime today","Laufzeit heute")},
+   "remaining_runtime": {"name": t("Remaining runtime","Restlaufzeit")},
+   "backwash_hours": {"name": t("Pump hours since backwash","Pumpenstunden seit Rückspülen")},
+   "last_backwash": {"name": t("Last backwash","Letztes Rückspülen")},
+   "last_measurement": {"name": t("Last measurement","Letzte Messung")},
+   "chlorine_dose": {"name": t("Chlorine dose","Chlor-Dosierung")},
+   "ph_minus_dose": {"name": t("pH-minus dose","pH-Minus-Dosierung")},
+   "ph_plus_dose": {"name": t("pH-plus dose","pH-Plus-Dosierung")},
+   "weather_hint": {"name": t("Weather hint","Wetter-Hinweis")},
+   "rain_last_24h": {"name": t("Rain last 24 h","Regen letzte 24 h")},
+   "rain_forecast_24h": {"name": t("Rain forecast 24 h","Regen-Vorhersage 24 h")},
+   "metal_ex_dose": {"name": t("Metal remover dose","Metall-Ex-Dosierung")},
+   "metal_ex_remaining": {"name": t("Metal remover remaining","Metall-Ex Restzeit")},
+   "last_dose": {"name": t("Last dose","Letzte Zugabe")},
+   **{f"consumption_{k}": {"name": t(f"Consumption {v}", f"Verbrauch {v}")} for k, v in products.items()},
+   "program_remaining": {"name": t("Program remaining","Programm Restzeit")},
+   "season": {"name": t("Season","Saison"), "state": seasons},
+   "swim_score": {"name": t("Swim weather","Badewetter")},
+   "solar_energy_today": {"name": t("Solar energy today","Solarstrom heute")},
+   "solar_share_today": {"name": t("Solar share today","Solaranteil heute")},
+   "solar_savings_today": {"name": t("Solar savings today","Solar-Ersparnis heute")},
+   "solar_savings_rate": {"name": t("Solar savings now","Solar-Ersparnis aktuell")},
+   "weekly_report": {"name": t("Weekly report","Wochenbericht")},
+   "pump_outages_today": {"name": t("Pump outages today","Pumpen-Ausfälle heute")},
+   "energy_today": {"name": t("Energy today","Energie heute")},
+   "cost_today": {"name": t("Cost today","Kosten heute")},
+  },
+  "binary_sensor": {
+   "backwash_due": {"name": t("Backwash due","Rückspülen fällig")},
+   "measurement_stale": {"name": t("Measurement stale","Messung veraltet")},
+   "pump_fault": {"name": t("Pump fault","Pumpenstörung")},
+   "frost_risk": {"name": t("Frost risk","Frostgefahr")},
+   "heavy_rain": {"name": t("Heavy rain","Starkregen")},
+   "probe_check": {"name": t("Check probe","Sonde prüfen")},
+   "stock_low": {"name": t("Stock low","Vorrat knapp")},
+   "maintenance_due": {"name": t("Maintenance due","Wartung fällig")},
+   "visual_finding": {"name": t("Camera finding","Kamera-Befund auffällig")},
+   "motion_while_away": {"name": t("Motion while away","Bewegung bei Abwesenheit")},
+   "connection_unstable": {"name": t("Pump connection unstable","Pumpen-Verbindung instabil")},
+   "metal_ex_active": {"name": t("Metal remover treatment","Metall-Ex-Behandlung")},
+  },
+  "select": {
+   "mode": {"name": t("Mode","Betriebsart"), "state": modes},
+   "program": {"name": t("Program","Programm"), "state": programs},
+   "dose_product": {"name": t("Dose product","Pflegemittel"), "state": products},
+  },
+  "todo": {"tasks": {"name": t("Tasks","Aufgaben")}},
+  "switch": {"follow_recommendation": {"name": t("Follow recommendation","Empfehlung automatisch übernehmen")}},
+  "time": {"start_time": {"name": t("Start time","Startzeit")}},
+  "number": {
+   "target_runtime": {"name": t("Target runtime","Soll-Laufzeit")},
+   "electricity_price": {"name": t("Electricity price","Strompreis")},
+   "refill_cm": {"name": t("Refill amount","Nachfüllmenge")},
+   "dose_amount": {"name": t("Dose amount","Zugabemenge")},
+   "boost_hours": {"name": t("Boost duration","Boost-Dauer")},
+   **{f"stock_{k}": {"name": t(f"Stock {v}", f"Vorrat {v}")} for k, v in products.items()},
+  },
+  "button": {
+   "backwash_done": {"name": t("Backwash done","Rückgespült")},
+   "reset_fault": {"name": t("Reset fault","Störung quittieren")},
+   "refilled": {"name": t("Refilled","Nachgefüllt")},
+   "metal_ex_added": {"name": t("Metal remover added","Metall-Ex zugegeben")},
+   "log_dose": {"name": t("Log dose","Zugabe erfassen")},
+   "new_season": {"name": t("New season","Neue Saison")},
+   "sand_changed": {"name": t("Filter sand replaced","Filtersand gewechselt")},
+   "probe_calibrated": {"name": t("Probe calibrated","Sonde kalibriert")},
+   "seals_checked": {"name": t("Seals checked","Dichtungen geprüft")},
+  },
+ },
+}
+out["issues"] = {"pump_unstable": {
+  "title": t("{name}: pump connection unstable","{name}: Pumpen-Verbindung instabil"),
+  "description": t("The pump switch was unavailable {count} times today (Wi-Fi signal: {wifi}). Check the Wi-Fi coverage or power supply of the plug.",
+                   "Der Pumpen-Schalter war heute {count}× nicht erreichbar (WLAN-Signal: {wifi}). Prüfe den WLAN-Empfang oder die Stromversorgung des Steckers.")}}
+out["exceptions"] = {"entry_not_loaded": {"message": t("Smart Pool entry not found or not loaded.","Smart-Pool-Eintrag nicht gefunden oder nicht geladen.")}}
+out["selector"] = {"product": {"options": products}, "program": {"options": programs}}
+out["services"] = {
+ "log_dose": {"name": t("Log dose","Zugabe erfassen"),
+   "description": t("Logs a chemical addition (updates consumption, stock and the probe check).","Erfasst eine Pflegemittel-Zugabe (Verbrauch, Vorrat und Sonden-Check)."),
+   "fields": {"config_entry_id": {"name": t("Pool","Pool"), "description": t("Smart Pool entry.","Smart-Pool-Eintrag.")},
+              "product": {"name": t("Product","Pflegemittel"), "description": t("What was added.","Was zugegeben wurde.")},
+              "amount": {"name": t("Amount","Menge"), "description": t("Grams (ml for metal remover). Empty = recommended amount.","Gramm (ml bei Metall-Ex). Leer = empfohlene Menge.")}}},
+ "start_program": {"name": t("Start program","Programm starten"),
+   "description": t("Starts a special program with automatic end; 'none' cancels.","Startet ein Sonderprogramm mit automatischem Ende; „Keines“ bricht ab."),
+   "fields": {"config_entry_id": {"name": t("Pool","Pool"), "description": t("Smart Pool entry.","Smart-Pool-Eintrag.")},
+              "program": {"name": t("Program","Programm"), "description": t("Program to start.","Zu startendes Programm.")},
+              "hours": {"name": t("Hours","Stunden"), "description": t("Optional duration; default depends on the program.","Optionale Dauer; Standard je nach Programm.")}}},
+}
+print(json.dumps(out, indent=2, ensure_ascii=False))
