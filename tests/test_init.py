@@ -111,6 +111,21 @@ async def test_setup_is_passive_and_calculates(hass: HomeAssistant, sources) -> 
     # 15 °C / 2 = 7.5 h, +1 h because redox is low
     assert float(hass.states.get("sensor.pool_recommended_runtime").state) == 8.5
     assert float(hass.states.get("sensor.pool_energy_today").state) == 0
+    assert hass.states.get("sensor.pool_guidance").state == (
+        "Redox too low: add about 70 g chlorine"
+    )
+    assert (
+        hass.states.get("sensor.pool_pump_hours_since_backwash").attributes["interval_hours"] == 50
+    )
+
+    card = quality.attributes["card_entities"]
+    assert card["pump"] == PUMP
+    assert card["mode"] == "select.pool_mode"
+    assert card["target_mode"] == "auto"
+    assert card["target_runtime"] == "number.pool_target_runtime"
+    assert card["guidance"] == "sensor.pool_guidance"
+    assert card["temperature"] == "sensor.water_temp"
+    assert card["backwash"]["done_button"] == "button.pool_backwash_done"
 
     # Turning the pump on manually is never undone in manual mode.
     await hass.services.async_call("input_boolean", "turn_on", {"entity_id": PUMP}, blocking=True)
@@ -217,6 +232,43 @@ async def test_backwash_and_energy(
     await hass.async_block_till_done()
     assert hass.states.get("sensor.pool_last_backwash").state not in ("unknown", None)
     assert float(hass.states.get("sensor.pool_pump_hours_since_backwash").state) == 0
+
+
+async def test_target_runtime(hass: HomeAssistant, sources) -> None:
+    """Target follows the recommendation until a fixed value is set."""
+    await _setup(hass, _entry())
+    target = "number.pool_target_runtime"
+    follow = "switch.pool_follow_recommendation"
+    assert float(hass.states.get(target).state) == 8.5
+    assert hass.states.get(follow).state == "on"
+
+    async def set_target(value: float) -> None:
+        await hass.services.async_call(
+            "number", "set_value", {"entity_id": target, "value": value}, blocking=True
+        )
+        await hass.async_block_till_done()
+
+    await set_target(4)
+    assert float(hass.states.get(target).state) == 4
+    assert hass.states.get(follow).state == "off"
+    assert float(hass.states.get("sensor.pool_remaining_runtime").state) == 4
+
+    # A colder pool changes the recommendation but not the fixed target.
+    hass.states.async_set("sensor.water_temp", "10")
+    await hass.async_block_till_done()
+    assert float(hass.states.get(target).state) == 4
+
+    # Choosing the recommendation (card button) follows it again.
+    await set_target(6)
+    assert hass.states.get(follow).state == "on"
+    hass.states.async_set("sensor.water_temp", "16")
+    await hass.async_block_till_done()
+    assert float(hass.states.get(target).state) == 9
+
+    await hass.services.async_call("switch", "turn_off", {"entity_id": follow}, blocking=True)
+    hass.states.async_set("sensor.water_temp", "20")
+    await hass.async_block_till_done()
+    assert float(hass.states.get(target).state) == 9
 
 
 async def test_state_survives_restart(

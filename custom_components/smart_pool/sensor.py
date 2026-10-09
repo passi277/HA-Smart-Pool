@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
-from .const import QUALITY_STATES, STATUSES
+from .const import CONF_BACKWASH_HOURS, QUALITY_STATES, STATUSES
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
 
@@ -39,6 +39,7 @@ def _quality_attrs(c: SmartPoolController) -> dict[str, Any]:
         "water_temperature": d.water_temp,
         "ph_status": d.ph_status,
         "orp_status": d.orp_status,
+        "card_entities": c.card_entities(),
     }
 
 
@@ -49,6 +50,10 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         options=list(QUALITY_STATES),
         value_fn=lambda c: c.data.quality,
         attrs_fn=_quality_attrs,
+    ),
+    SmartPoolSensorDescription(
+        key="guidance",
+        value_fn=lambda c: c.data.guidance,
     ),
     SmartPoolSensorDescription(
         key="ph_status",
@@ -77,13 +82,6 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         value_fn=lambda c: c.data.recommended_runtime,
     ),
     SmartPoolSensorDescription(
-        key="target_runtime",
-        device_class=SensorDeviceClass.DURATION,
-        native_unit_of_measurement=UnitOfTime.HOURS,
-        suggested_display_precision=1,
-        value_fn=lambda c: c.data.target_runtime,
-    ),
-    SmartPoolSensorDescription(
         key="runtime_today",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.HOURS,
@@ -104,6 +102,7 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.HOURS,
         suggested_display_precision=1,
         value_fn=lambda c: c.data.backwash_hours,
+        attrs_fn=lambda c: {"interval_hours": c.config[CONF_BACKWASH_HOURS]},
     ),
     SmartPoolSensorDescription(
         key="last_backwash",

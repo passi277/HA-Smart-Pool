@@ -14,6 +14,7 @@ PLATFORMS: list[Platform] = [
     Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
+    Platform.SWITCH,
     Platform.TIME,
 ]
 
@@ -27,6 +28,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SmartPoolConfigEntry) ->
     entry.runtime_data = controller
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Refresh once all entities exist so the card mapping is complete.
+    await controller.async_update()
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 

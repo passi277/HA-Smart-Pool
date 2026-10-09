@@ -138,8 +138,8 @@
       "recommended_runtime": {
         "name": "Empfohlene Laufzeit"
       },
-      "target_runtime": {
-        "name": "Soll-Laufzeit"
+      "guidance": {
+        "name": "Handlungshinweis"
       },
       "runtime_today": {
         "name": "Laufzeit heute"
@@ -199,14 +199,19 @@
         }
       }
     },
+    "switch": {
+      "follow_recommendation": {
+        "name": "Empfehlung automatisch übernehmen"
+      }
+    },
     "time": {
       "start_time": {
         "name": "Startzeit"
       }
     },
     "number": {
-      "runtime_offset": {
-        "name": "Laufzeit-Korrektur"
+      "target_runtime": {
+        "name": "Soll-Laufzeit"
       },
       "electricity_price": {
         "name": "Strompreis"

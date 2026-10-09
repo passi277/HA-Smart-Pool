@@ -19,6 +19,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import (
     async_track_state_change_event,
     async_track_time_interval,
@@ -33,6 +34,7 @@ from .calculations import (
     classify_ph,
     combine_quality,
     decide_pump,
+    guidance,
     ph_doses,
     recommended_runtime,
     split_at_midnight,
@@ -76,6 +78,7 @@ from .const import (
     EVENT_PUMP_STOPPED,
     EVENT_SMART_POOL,
     EVENT_WATER_QUALITY_CHANGED,
+    MODE_AUTO,
     MODE_MANUAL,
     MODES,
     OPTIONAL_ENTITY_KEYS,
@@ -103,6 +106,7 @@ class PoolData:
     quality: str = QUALITY_UNKNOWN
     recommended_runtime: float = 0.0
     target_runtime: float = 0.0
+    guidance: str = "unknown"
     runtime_today: float = 0.0
     remaining_runtime: float = 0.0
     backwash_hours: float = 0.0
@@ -140,7 +144,8 @@ class SmartPoolController:
         # Persisted state
         self.mode: str = DEFAULT_MODE
         self.start_time: time = _parse_time(None, DEFAULT_START_TIME)
-        self.runtime_offset: float = 0.0
+        self.target_runtime: float | None = None
+        self.follow_recommendation: bool = True
         self.electricity_price: float = 0.30
         self.fault: bool = False
         self.last_backwash: datetime | None = None
@@ -215,7 +220,9 @@ class SmartPoolController:
         if stored.get("mode") in MODES:
             self.mode = stored["mode"]
         self.start_time = _parse_time(stored.get("start_time"), DEFAULT_START_TIME)
-        self.runtime_offset = float(stored.get("runtime_offset", 0.0))
+        if stored.get("target_runtime") is not None:
+            self.target_runtime = float(stored["target_runtime"])
+        self.follow_recommendation = bool(stored.get("follow_recommendation", True))
         self.electricity_price = float(stored.get("electricity_price", 0.30))
         self.fault = bool(stored.get("fault", False))
         self._runtime_today_s = float(stored.get("runtime_today_s", 0.0))
@@ -233,7 +240,8 @@ class SmartPoolController:
         return {
             "mode": self.mode,
             "start_time": self.start_time.isoformat(),
-            "runtime_offset": self.runtime_offset,
+            "target_runtime": self.target_runtime,
+            "follow_recommendation": self.follow_recommendation,
             "electricity_price": self.electricity_price,
             "fault": self.fault,
             "runtime_today_s": self._runtime_today_s,
@@ -289,9 +297,24 @@ class SmartPoolController:
         self._schedule_save()
         await self.async_update()
 
-    async def async_set_runtime_offset(self, value: float) -> None:
-        """Change the runtime correction in hours."""
-        self.runtime_offset = value
+    async def async_set_target_runtime(self, value: float) -> None:
+        """Set the daily target runtime in hours.
+
+        Picking the current recommendation (as the pool card's "use
+        recommendation" button does) re-enables following it; any other value
+        pins the target.
+        """
+        self.target_runtime = value
+        self.follow_recommendation = abs(value - self.data.recommended_runtime) < 0.25
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_set_follow_recommendation(self, follow: bool) -> None:
+        """Let the target follow the recommendation or keep it fixed."""
+        if not follow:
+            # Freeze the target at what is currently in effect.
+            self.target_runtime = self.data.target_runtime
+        self.follow_recommendation = follow
         self._schedule_save()
         await self.async_update()
 
@@ -399,7 +422,10 @@ class SmartPoolController:
             min_hours=float(cfg[CONF_MIN_RUNTIME]),
             max_hours=float(cfg[CONF_MAX_RUNTIME]),
         )
-        data.target_runtime = max(0.0, data.recommended_runtime + self.runtime_offset)
+        if self.follow_recommendation or self.target_runtime is None:
+            data.target_runtime = data.recommended_runtime
+        else:
+            data.target_runtime = self.target_runtime
         data.runtime_today = round(self._runtime_today_s / 3600, 2)
         data.remaining_runtime = round(max(0.0, data.target_runtime - data.runtime_today), 2)
 
@@ -410,6 +436,14 @@ class SmartPoolController:
             step_ppm=float(cfg[CONF_CHLORINE_STEP]),
         )
         data.ph_minus_dose, data.ph_plus_dose = ph_doses(data.ph, volume_m3=volume)
+        data.guidance = guidance(
+            ph=data.ph,
+            orp=data.orp,
+            ph_minus_g=data.ph_minus_dose,
+            ph_plus_g=data.ph_plus_dose,
+            chlorine_g=data.chlorine_dose,
+            language=self.hass.config.language,
+        )
 
         # Backwash
         data.backwash_hours = round(self._backwash_s / 3600, 2)
@@ -567,6 +601,42 @@ class SmartPoolController:
             EVENT_PUMP_STARTED if decision.turn_on else EVENT_PUMP_STOPPED,
             reason=decision.status,
         )
+
+    def card_entities(self) -> dict[str, Any]:
+        """Entity mapping for the Modern Pool Card (custom:ha-pool-card)."""
+        registry = er.async_get(self.hass)
+
+        def own(platform: str, key: str) -> str | None:
+            return registry.async_get_entity_id(platform, DOMAIN, f"{self.entry.entry_id}_{key}")
+
+        mapping: dict[str, Any] = {
+            "pump": self._entity(CONF_PUMP_ENTITY),
+            "pump_power": self._entity(CONF_PUMP_POWER_ENTITY),
+            "mode": own("select", "mode"),
+            "target_mode": MODE_AUTO,
+            "start_time": own("time", "start_time"),
+            "target_runtime": own("number", "target_runtime"),
+            "recommended_runtime": own("sensor", "recommended_runtime"),
+            "runtime_today": own("sensor", "runtime_today"),
+            "temperature": self._entity(CONF_WATER_TEMP_ENTITY),
+            "ph": self._entity(CONF_PH_ENTITY),
+            "orp": self._entity(CONF_ORP_ENTITY),
+            "guidance": own("sensor", "guidance"),
+            "last_measurement": own("sensor", "last_measurement"),
+            "measurement_stale": own("binary_sensor", "measurement_stale"),
+            "quality": own("sensor", "water_quality"),
+            "energy_today": own("sensor", "energy_today"),
+            "cost_today": own("sensor", "cost_today"),
+            "solar_power": self._entity(CONF_SOLAR_POWER_ENTITY),
+            "backwash": {
+                "due": own("binary_sensor", "backwash_due"),
+                "hours": own("sensor", "backwash_hours"),
+                "last": own("sensor", "last_backwash"),
+                "done_button": own("button", "backwash_done"),
+            },
+        }
+        mapping["backwash"] = {k: v for k, v in mapping["backwash"].items() if v}
+        return {k: v for k, v in mapping.items() if v}
 
     @callback
     def _fire(self, event_type: str, **extra: Any) -> None:

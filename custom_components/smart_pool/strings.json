@@ -138,8 +138,8 @@
       "recommended_runtime": {
         "name": "Recommended runtime"
       },
-      "target_runtime": {
-        "name": "Target runtime"
+      "guidance": {
+        "name": "Guidance"
       },
       "runtime_today": {
         "name": "Runtime today"
@@ -199,14 +199,19 @@
         }
       }
     },
+    "switch": {
+      "follow_recommendation": {
+        "name": "Follow recommendation"
+      }
+    },
     "time": {
       "start_time": {
         "name": "Start time"
       }
     },
     "number": {
-      "runtime_offset": {
-        "name": "Runtime correction"
+      "target_runtime": {
+        "name": "Target runtime"
       },
       "electricity_price": {
         "name": "Electricity price"

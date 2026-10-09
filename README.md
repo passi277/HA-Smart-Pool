@@ -14,7 +14,8 @@ Dauerbetrieb, Frostschutz) inklusive Trockenlaufschutz und Rückspül-Erinnerung
 |---|---|
 | Wasserqualität | Gesamtstatus `ok / prüfen / kritisch`, pH-Status, Redox-Status |
 | Dosierung | Chlor-Menge (g) bei zu niedrigem Redox, pH-Minus / pH-Plus (g) bezogen auf dein Poolvolumen |
-| Laufzeit | Empfohlene Laufzeit (Wassertemperatur ÷ 2, mind. 1× Umwälzung, + Zuschlag bei schlechtem Redox), Soll-Laufzeit inkl. Korrektur, Laufzeit heute, Restlaufzeit |
+| Laufzeit | Empfohlene Laufzeit (Wassertemperatur ÷ 2, mind. 1× Umwälzung, + Zuschlag bei schlechtem Redox), Soll-Laufzeit (folgt der Empfehlung oder fest eingestellt), Laufzeit heute, Restlaufzeit |
+| Hinweis | Handlungshinweis als Text, z. B. „Redox zu niedrig: ca. 70 g Chlor zugeben“ (`ok`, wenn nichts zu tun ist) |
 | Pumpe | Betriebsarten Manuell, Aus, Automatik (Zeitplan), Solar, Dauerbetrieb, Winter/Frostschutz |
 | Sicherheit | Trockenlaufschutz über die Pumpenleistung, Schaltschutz gegen Flattern (min. 2 min), Pumpe nicht erreichbar → keine Befehle |
 | Wartung | Pumpenstunden seit Rückspülen, Rückspülen fällig (Stunden oder Tage), Button „Rückgespült“ |
@@ -84,16 +85,56 @@ Pumpen-Automationen deaktivieren – sonst schalten zwei Logiken dieselbe Pumpe.
 |---|---|
 | `select.<pool>_betriebsart` | Betriebsart |
 | `time.<pool>_startzeit` | Startzeit für Automatik |
-| `number.<pool>_laufzeit_korrektur` | ± Stunden auf die empfohlene Laufzeit |
+| `number.<pool>_soll_laufzeit` | Ziel-Laufzeit pro Tag in Stunden |
+| `switch.<pool>_empfehlung_automatisch_ubernehmen` | An = Soll-Laufzeit folgt der Empfehlung; ein eigener Wert schaltet es aus, „Empfehlung übernehmen“ wieder an |
 | `number.<pool>_strompreis` | €/kWh für die Kostenberechnung |
 | `sensor.<pool>_wasserqualitat`, `…_ph_status`, `…_redox_status` | Bewertung |
 | `sensor.<pool>_pumpenstatus` | Was die Steuerung gerade tut und warum |
-| `sensor.<pool>_empfohlene_laufzeit`, `…_soll_laufzeit`, `…_laufzeit_heute`, `…_restlaufzeit` | Laufzeit |
+| `sensor.<pool>_handlungshinweis` | Was jetzt zu tun ist |
+| `sensor.<pool>_empfohlene_laufzeit`, `…_laufzeit_heute`, `…_restlaufzeit` | Laufzeit |
 | `sensor.<pool>_chlor_dosierung`, `…_ph_minus_dosierung`, `…_ph_plus_dosierung` | Dosier-Richtwerte |
 | `sensor.<pool>_pumpenstunden_seit_ruckspulen`, `…_letztes_ruckspulen` | Wartung |
 | `sensor.<pool>_letzte_messung`, `…_energie_heute`, `…_kosten_heute` | Info |
 | `binary_sensor.<pool>_ruckspulen_fallig`, `…_messung_veraltet`, `…_pumpenstorung`, `…_frostgefahr` | Warnungen |
 | `button.<pool>_ruckgespult`, `…_storung_quittieren` | Aktionen |
+
+## Modern Pool Card
+
+Smart Pool liefert alles, was die **Modern Pool Card** (`custom:ha-pool-card` aus *Modern Cards*) braucht.
+Die passende Zuordnung steht fertig im Attribut **`card_entities`** von `sensor.<pool>_wasserqualitat`
+(*Entwicklerwerkzeuge → Zustände*) – einfach in die Karte übernehmen. Die Entitäts-IDs können bei
+dir anders heißen (z. B. mit `_2`, wenn es schon gleichnamige Entitäten gibt).
+
+```yaml
+type: custom:ha-pool-card
+pump: switch.stecker_pool_switch_0
+pump_power: sensor.stecker_pool_switch_0_power
+temperature: sensor.pool_temperature
+ph: sensor.pool_ph
+orp: sensor.pool_orp
+solar_power: sensor.solarbank_3_e2700_pro_solarleistung
+mode: select.pool_betriebsart
+target_mode: auto                      # Modus, in dem die Soll-Laufzeit gilt
+start_time: time.pool_startzeit
+target_runtime: number.pool_soll_laufzeit
+recommended_runtime: sensor.pool_empfohlene_laufzeit
+runtime_today: sensor.pool_laufzeit_heute
+guidance: sensor.pool_handlungshinweis
+quality: sensor.pool_wasserqualitat
+last_measurement: sensor.pool_letzte_messung
+measurement_stale: binary_sensor.pool_messung_veraltet
+energy_today: sensor.pool_energie_heute
+cost_today: sensor.pool_kosten_heute
+backwash:
+  due: binary_sensor.pool_ruckspulen_fallig
+  hours: sensor.pool_pumpenstunden_seit_ruckspulen   # Intervall kommt aus dem Attribut interval_hours
+  last: sensor.pool_letztes_ruckspulen
+  done_button: button.pool_ruckgespult
+# Bereiche wie in Smart Pool:
+ranges: { ph: [6.8, 7.2, 7.6, 8.0], orp: [400, 650, 800, 900] }
+```
+
+Hinweis: Die Karte zeigt die Betriebsarten mit ihren internen Namen (`manual`, `auto`, `solar` …).
 
 ## Ereignisse für Benachrichtigungen
 

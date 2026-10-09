@@ -146,6 +146,53 @@ def ph_doses(ph: float | None, *, volume_m3: float) -> tuple[float, float]:
     return 0.0, 0.0
 
 
+_GUIDANCE_TEXT = {
+    "de": {
+        "ph_high": "pH zu hoch: ca. {g} g pH-Minus zugeben",
+        "ph_low": "pH zu niedrig: ca. {g} g pH-Plus zugeben",
+        "orp_low": "Redox zu niedrig: ca. {g} g Chlor zugeben",
+        "orp_high": "Redox zu hoch: kein Chlor zugeben",
+    },
+    "en": {
+        "ph_high": "pH too high: add about {g} g pH minus",
+        "ph_low": "pH too low: add about {g} g pH plus",
+        "orp_low": "Redox too low: add about {g} g chlorine",
+        "orp_high": "Redox too high: do not add chlorine",
+    },
+}
+GUIDANCE_OK = "ok"
+GUIDANCE_UNKNOWN = "unknown"
+
+
+def guidance(
+    *,
+    ph: float | None,
+    orp: float | None,
+    ph_minus_g: float,
+    ph_plus_g: float,
+    chlorine_g: float,
+    language: str,
+) -> str:
+    """Short action hint, pH first (correct pH before chlorinating).
+
+    Returns "ok" when nothing needs to be done, the format the Modern Pool
+    Card expects.
+    """
+    if ph is None and orp is None:
+        return GUIDANCE_UNKNOWN
+    text = _GUIDANCE_TEXT.get(language.split("-")[0], _GUIDANCE_TEXT["en"])
+    parts: list[str] = []
+    if ph_minus_g > 0:
+        parts.append(text["ph_high"].format(g=f"{ph_minus_g:.0f}"))
+    elif ph_plus_g > 0:
+        parts.append(text["ph_low"].format(g=f"{ph_plus_g:.0f}"))
+    if chlorine_g > 0:
+        parts.append(text["orp_low"].format(g=f"{chlorine_g:.0f}"))
+    elif orp is not None and orp > ORP_RANGES[2]:
+        parts.append(text["orp_high"])
+    return " · ".join(parts) or GUIDANCE_OK
+
+
 def _round_to(value: float, base: float) -> float:
     return float(base * round(value / base))
 

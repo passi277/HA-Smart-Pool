@@ -29,15 +29,14 @@ class SmartPoolNumberDescription(NumberEntityDescription):
 
 NUMBERS: tuple[SmartPoolNumberDescription, ...] = (
     SmartPoolNumberDescription(
-        key="runtime_offset",
-        entity_category=EntityCategory.CONFIG,
-        native_min_value=-6,
-        native_max_value=12,
+        key="target_runtime",
+        native_min_value=0,
+        native_max_value=24,
         native_step=0.5,
         native_unit_of_measurement=UnitOfTime.HOURS,
         mode=NumberMode.BOX,
-        value_fn=lambda c: c.runtime_offset,
-        set_fn=lambda c, v: c.async_set_runtime_offset(v),
+        value_fn=lambda c: c.data.target_runtime,
+        set_fn=lambda c, v: c.async_set_target_runtime(v),
     ),
     SmartPoolNumberDescription(
         key="electricity_price",

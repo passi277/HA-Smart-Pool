@@ -13,6 +13,7 @@ from custom_components.smart_pool.calculations import (
     classify_ph,
     combine_quality,
     decide_pump,
+    guidance,
     ph_doses,
     recommended_runtime,
     split_at_midnight,
@@ -191,3 +192,18 @@ def test_switch_guard_prevents_flapping():
     assert decision.turn_on is None
     decision = decide_pump(_inputs(now=_now(10, 5), last_switch=_now(10, 0)))
     assert decision.turn_on is True
+
+
+def test_guidance():
+    kwargs = {"ph_minus_g": 0, "ph_plus_g": 0, "chlorine_g": 0, "language": "de"}
+    assert guidance(ph=7.4, orp=700, **kwargs) == "ok"
+    assert guidance(ph=None, orp=None, **kwargs) == "unknown"
+    assert guidance(ph=7.4, orp=950, **kwargs) == "Redox zu hoch: kein Chlor zugeben"
+    text = guidance(ph=7.8, orp=535, ph_minus_g=1600, ph_plus_g=0, chlorine_g=70, language="de")
+    assert (
+        text == "pH zu hoch: ca. 1600 g pH-Minus zugeben · Redox zu niedrig: ca. 70 g Chlor zugeben"
+    )
+    english = guidance(
+        ph=7.0, orp=700, ph_minus_g=0, ph_plus_g=1600, chlorine_g=0, language="en-GB"
+    )
+    assert english == "pH too low: add about 1600 g pH plus"
