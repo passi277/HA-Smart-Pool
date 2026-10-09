@@ -73,6 +73,29 @@ Solar-Schwelle, Nachholzeit, Frostgrenze …) lassen sich später unter *Konfigu
 | Solarleistung | `sensor.solarbank_3_e2700_pro_solarleistung` |
 | Letzte Messung | `sensor.pool_last_measurement` |
 
+### Empfohlene Einstellungen für den Garten-Pool (Intex Ultra XTR 549 × 274 × 132 cm)
+
+| Einstellung | Wert | Begründung |
+|---|---|---|
+| Poolvolumen | **17,2 m³** | Herstellerangabe bei 90 % Füllung |
+| Pumpen-Fördermenge | **0** (unbekannt) oder Wert vom Typenschild | Die Sandfilteranlage schafft das Volumen in ca. 3 h. Die Laufzeit-Regel Temperatur ÷ 2 liegt fast immer darüber |
+| Trockenlauf-Grenze | **300 W** | Die Pumpe zieht im Betrieb ca. 470 W (gemessen am Shelly-Stecker). Bei Luft im System oder Trockenlauf fällt die Leistung deutlich ab |
+| Aktivchlor-Gehalt | **56 %** (Dichlor-Granulat) bzw. dein Produkt | |
+| Chlor-Anhebung pro Dosis | **1 mg/l** | |
+| Rückspülen | **50 h** / spätestens **14 Tage** | wie bisher in der Garten-Integration |
+| Solar-Startschwelle | **400 W** | wie im bisherigen Smart-Modus, knapp unter dem Pumpenverbrauch |
+| Strompreis | **0,30 €/kWh** | |
+
+Daraus ergibt sich für diesen Pool:
+
+| | Wert |
+|---|---|
+| pH um 0,1 verschieben | ca. **170 g** pH-Minus/-Plus |
+| Chlor bei Redox unter 650 mV | ca. **30 g** Dichlor-Granulat (unter 400 mV ca. 60 g) |
+| Laufzeit bei 15 °C Wasser | 7,5 h (+1 h bei zu niedrigem Redox) |
+| Laufzeit im Hochsommer (ab 24 °C) | 12 h (Obergrenze) |
+| Stromkosten pro Laufstunde | ca. 0,47 kWh ≈ **0,14 €** |
+
 ### Umstieg von bestehenden Automationen
 
 Solange die Betriebsart **Manuell** ist, läuft alles parallel und ohne Konflikt. Bevor du auf
