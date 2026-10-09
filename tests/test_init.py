@@ -7,7 +7,7 @@ from datetime import timedelta
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
@@ -24,9 +24,12 @@ from custom_components.smart_pool.const import (
     CONF_PUMP_ENERGY_ENTITY,
     CONF_PUMP_ENTITY,
     CONF_PUMP_POWER_ENTITY,
+    CONF_RAIN_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
+    CONF_SURFACE,
     CONF_VOLUME,
     CONF_WATER_TEMP_ENTITY,
+    CONF_WEATHER_ENTITY,
     DOMAIN,
     EVENT_SMART_POOL,
 )
@@ -83,6 +86,11 @@ async def _select_mode(hass: HomeAssistant, mode: str) -> None:
         {"entity_id": "select.pool_mode", "option": mode},
         blocking=True,
     )
+    await hass.async_block_till_done()
+
+
+async def _press(hass: HomeAssistant, entity_id: str) -> None:
+    await hass.services.async_call("button", "press", {"entity_id": entity_id}, blocking=True)
     await hass.async_block_till_done()
 
 
@@ -288,3 +296,123 @@ async def test_state_survives_restart(
     await hass.async_block_till_done()
     assert hass.states.get("select.pool_mode").state == "off"
     assert hass.states.get("time.pool_start_time").state == "14:30:00"
+
+
+async def test_refill_and_metal_ex_treatment(
+    hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
+) -> None:
+    """Refill -> metal remover dose -> 48 h pump run -> backwash."""
+    freezer.move_to(dt_util.start_of_local_day() + timedelta(hours=8))
+    hass.states.async_set("sensor.orp", "700")
+    await _setup(hass, _entry(**{CONF_SURFACE: 15}))
+    events = async_capture_events(hass, EVENT_SMART_POOL)
+    await _select_mode(hass, "auto")
+    assert hass.states.get(PUMP).state == "off"
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {"entity_id": "number.pool_refill_amount", "value": 2},
+        blocking=True,
+    )
+    await _press(hass, "button.pool_refilled")
+    dose = hass.states.get("sensor.pool_metal_remover_dose")
+    assert float(dose.state) == 20  # 300 l * 60 ml/m³
+    assert dose.attributes["fresh_water_liters"] == 300
+    assert dose.attributes["whole_pool_preventive_ml"] == 1200  # 40 m³ * 30 ml
+    guidance = hass.states.get("sensor.pool_guidance").state
+    assert guidance.startswith("Add 20 ml metal remover")
+
+    await _press(hass, "button.pool_metal_remover_added")
+    assert hass.states.get(PUMP).state == "on"
+    assert hass.states.get("sensor.pool_pump_status").state == "running_metal_ex"
+    assert hass.states.get("binary_sensor.pool_metal_remover_treatment").state == "on"
+    assert float(hass.states.get("sensor.pool_metal_remover_dose").state) == 0
+    assert float(hass.states.get("sensor.pool_metal_remover_remaining").state) == 48
+
+    # Still running in the evening although the daily target is long reached.
+    await _advance(hass, freezer, timedelta(hours=20))
+    assert hass.states.get(PUMP).state == "on"
+
+    for _ in range(3):
+        await _advance(hass, freezer, timedelta(hours=10))
+    assert hass.states.get("binary_sensor.pool_metal_remover_treatment").state == "off"
+    assert hass.states.get("binary_sensor.pool_backwash_due").state == "on"
+    assert "backwash" in hass.states.get("sensor.pool_guidance").state
+
+    await _press(hass, "button.pool_backwash_done")
+    assert hass.states.get("binary_sensor.pool_backwash_due").state == "off"
+    types = [e.data["type"] for e in events]
+    assert {"refilled", "metal_ex_added", "metal_ex_done", "backwash_done"} <= set(types)
+
+
+async def test_weather_forecast(
+    hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
+) -> None:
+    """Forecast drives rain estimate, heavy rain, hints and extra runtime."""
+    freezer.move_to(dt_util.start_of_local_day() + timedelta(hours=12, minutes=10))
+    hass.states.async_set("sensor.orp", "700")
+    hour = dt_util.now().replace(minute=0, second=0, microsecond=0)
+    calls = []
+
+    async def forecasts(call: ServiceCall) -> ServiceResponse:
+        calls.append(call.data["type"])
+        return {
+            "weather.home": {
+                "forecast": [
+                    {"datetime": hour.isoformat(), "precipitation": 12, "temperature": 18},
+                    {
+                        "datetime": (hour + timedelta(hours=3)).isoformat(),
+                        "precipitation": 3,
+                        "temperature": 31,
+                    },
+                ]
+            }
+        }
+
+    hass.services.async_register(
+        "weather", "get_forecasts", forecasts, supports_response=SupportsResponse.ONLY
+    )
+    hass.states.async_set("weather.home", "rainy")
+    await _setup(hass, _entry(**{CONF_WEATHER_ENTITY: "weather.home", CONF_SURFACE: 15}))
+
+    assert calls[0] == "hourly"
+    assert float(hass.states.get("sensor.pool_rain_last_24_h").state) == 12
+    forecast = hass.states.get("sensor.pool_rain_forecast_24_h")
+    assert float(forecast.state) == 15
+    assert forecast.attributes["liters"] == 225
+    assert forecast.attributes["max_temperature"] == 31
+    assert hass.states.get("binary_sensor.pool_heavy_rain").state == "on"
+    hint = hass.states.get("sensor.pool_weather_hint").state
+    assert hint.startswith("Heavy rain (12 mm)")
+    # 15 °C / 2 = 7.5 h + 1 h heavy rain + 1 h heat
+    assert float(hass.states.get("sensor.pool_recommended_runtime").state) == 9.5
+
+    # Cached for 30 minutes.
+    await _advance(hass, freezer, timedelta(minutes=5))
+    assert len(calls) == 1
+    await _advance(hass, freezer, timedelta(minutes=30))
+    assert len(calls) == 2
+
+
+async def test_rain_gauge(hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory) -> None:
+    """Rain gauge deltas are summed over 24 h, daily resets are handled."""
+    freezer.move_to(dt_util.start_of_local_day() + timedelta(hours=20))
+    hass.states.async_set("sensor.rain", "100")
+    await _setup(hass, _entry(**{CONF_RAIN_ENTITY: "sensor.rain"}))
+    assert float(hass.states.get("sensor.pool_rain_last_24_h").state) == 0
+
+    for value in ("104", "111"):
+        hass.states.async_set("sensor.rain", value)
+        await hass.async_block_till_done()
+    assert float(hass.states.get("sensor.pool_rain_last_24_h").state) == 11
+    assert hass.states.get("binary_sensor.pool_heavy_rain").state == "on"
+
+    await _advance(hass, freezer, timedelta(hours=5))
+    hass.states.async_set("sensor.rain", "2")  # meter reset at midnight
+    await hass.async_block_till_done()
+    assert float(hass.states.get("sensor.pool_rain_last_24_h").state) == 13
+
+    await _advance(hass, freezer, timedelta(hours=25))
+    assert float(hass.states.get("sensor.pool_rain_last_24_h").state) == 0
+    assert hass.states.get("binary_sensor.pool_heavy_rain").state == "off"

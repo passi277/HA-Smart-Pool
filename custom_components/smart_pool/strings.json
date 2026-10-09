@@ -21,7 +21,9 @@
           "solar_power_entity": "Solar power (W)",
           "battery_soc_entity": "Battery state of charge",
           "air_temp_entity": "Outdoor temperature",
-          "last_measurement_entity": "Last measurement timestamp"
+          "last_measurement_entity": "Last measurement timestamp",
+          "weather_entity": "Weather forecast",
+          "rain_entity": "Rain gauge (mm)"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -29,7 +31,9 @@
           "solar_power_entity": "Needed for the solar mode.",
           "battery_soc_entity": "Optional: solar mode only starts above the minimum charge.",
           "air_temp_entity": "Needed for winter / frost protection.",
-          "last_measurement_entity": "If empty, the last report of the pH sensor is used."
+          "last_measurement_entity": "If empty, the last report of the pH sensor is used.",
+          "weather_entity": "Rain, heat and UV forecast for runtime and hints.",
+          "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast."
         }
       }
     },
@@ -58,6 +62,8 @@
           "battery_soc_entity": "Battery state of charge",
           "air_temp_entity": "Outdoor temperature",
           "last_measurement_entity": "Last measurement timestamp",
+          "weather_entity": "Weather forecast",
+          "rain_entity": "Rain gauge (mm)",
           "pump_flow": "Pump flow rate (0 = unknown)",
           "min_runtime": "Minimum daily runtime",
           "max_runtime": "Maximum daily runtime",
@@ -70,7 +76,12 @@
           "battery_min_soc": "Minimum battery charge for solar",
           "catchup_time": "Catch-up from (solar mode)",
           "frost_temp": "Frost protection below",
-          "stale_hours": "Measurement stale after"
+          "stale_hours": "Measurement stale after",
+          "surface": "Water surface (0 = estimate)",
+          "heavy_rain": "Heavy rain from (24 h)",
+          "metal_ex_fresh": "Metal remover per m³ fresh water",
+          "metal_ex_pool": "Metal remover per m³ pool (preventive)",
+          "metal_ex_hours": "Filter runtime after metal remover"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -79,9 +90,14 @@
           "battery_soc_entity": "Optional: solar mode only starts above the minimum charge.",
           "air_temp_entity": "Needed for winter / frost protection.",
           "last_measurement_entity": "If empty, the last report of the pH sensor is used.",
+          "weather_entity": "Rain, heat and UV forecast for runtime and hints.",
+          "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.",
           "pump_flow": "If set, the runtime covers at least one full water turnover.",
           "chlorine_strength": "e.g. 56 % dichlor granulate, 65–70 % calcium hypochlorite, 90 % trichlor tablets.",
           "dry_run_power": "Pump is stopped if power stays below this value for 2 minutes.",
+          "surface": "Used for rain and refill litres (1 mm rain = 1 l per m²).",
+          "metal_ex_fresh": "Steinbach Metall-EX: 30–60 ml per m³; use the upper value for iron-rich well water.",
+          "metal_ex_hours": "The pump runs continuously this long after dosing (Steinbach: at least 48 h), then backwash.",
           "catchup_time": "If the daily runtime is not reached by then, the pump runs on grid power."
         }
       }
@@ -132,7 +148,8 @@
           "running_continuous": "Running (continuous)",
           "frost_protection": "Frost protection",
           "winter_idle": "Winter – idle",
-          "no_air_temp": "No outdoor temperature"
+          "no_air_temp": "No outdoor temperature",
+          "running_metal_ex": "Running (metal remover)"
         }
       },
       "recommended_runtime": {
@@ -165,6 +182,21 @@
       "ph_plus_dose": {
         "name": "pH-plus dose"
       },
+      "weather_hint": {
+        "name": "Weather hint"
+      },
+      "rain_last_24h": {
+        "name": "Rain last 24 h"
+      },
+      "rain_forecast_24h": {
+        "name": "Rain forecast 24 h"
+      },
+      "metal_ex_dose": {
+        "name": "Metal remover dose"
+      },
+      "metal_ex_remaining": {
+        "name": "Metal remover remaining"
+      },
       "energy_today": {
         "name": "Energy today"
       },
@@ -184,6 +216,12 @@
       },
       "frost_risk": {
         "name": "Frost risk"
+      },
+      "heavy_rain": {
+        "name": "Heavy rain"
+      },
+      "metal_ex_active": {
+        "name": "Metal remover treatment"
       }
     },
     "select": {
@@ -215,6 +253,9 @@
       },
       "electricity_price": {
         "name": "Electricity price"
+      },
+      "refill_cm": {
+        "name": "Refill amount"
       }
     },
     "button": {
@@ -223,6 +264,12 @@
       },
       "reset_fault": {
         "name": "Reset fault"
+      },
+      "refilled": {
+        "name": "Refilled"
+      },
+      "metal_ex_added": {
+        "name": "Metal remover added"
       }
     }
   }

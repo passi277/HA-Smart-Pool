@@ -13,7 +13,13 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfEnergy, UnitOfMass, UnitOfTime
+from homeassistant.const import (
+    UnitOfEnergy,
+    UnitOfMass,
+    UnitOfPrecipitationDepth,
+    UnitOfTime,
+    UnitOfVolume,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -40,6 +46,20 @@ def _quality_attrs(c: SmartPoolController) -> dict[str, Any]:
         "ph_status": d.ph_status,
         "orp_status": d.orp_status,
         "card_entities": c.card_entities(),
+    }
+
+
+def _forecast_attrs(c: SmartPoolController) -> dict[str, Any]:
+    f = c.data.forecast
+    if f is None:
+        return {}
+    return {
+        "liters": round(f.rain_mm * c.data.surface),
+        "max_temperature": f.max_temp,
+        "min_temperature": f.min_temp,
+        "uv_index_max": f.uv_max,
+        "thunderstorm": f.thunder,
+        "extra_runtime_hours": c.data.weather_extra_hours,
     }
 
 
@@ -134,6 +154,50 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfMass.GRAMS,
         suggested_display_precision=0,
         value_fn=lambda c: c.data.ph_plus_dose,
+    ),
+    SmartPoolSensorDescription(
+        key="weather_hint",
+        value_fn=lambda c: c.data.weather_hint,
+    ),
+    SmartPoolSensorDescription(
+        key="rain_last_24h",
+        device_class=SensorDeviceClass.PRECIPITATION,
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        suggested_display_precision=1,
+        value_fn=lambda c: c.data.rain_last_24h,
+        attrs_fn=lambda c: {
+            "liters": round((c.data.rain_last_24h or 0) * c.data.surface),
+            "source": "gauge" if c.config.get("rain_entity") else "forecast",
+        },
+    ),
+    SmartPoolSensorDescription(
+        key="rain_forecast_24h",
+        device_class=SensorDeviceClass.PRECIPITATION,
+        native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        suggested_display_precision=1,
+        value_fn=lambda c: c.data.forecast.rain_mm if c.data.forecast else None,
+        attrs_fn=lambda c: _forecast_attrs(c),
+    ),
+    SmartPoolSensorDescription(
+        key="metal_ex_dose",
+        device_class=SensorDeviceClass.VOLUME,
+        native_unit_of_measurement=UnitOfVolume.MILLILITERS,
+        suggested_display_precision=0,
+        value_fn=lambda c: c.data.metal_ex_dose,
+        attrs_fn=lambda c: {
+            "fresh_water_liters": c.data.fresh_water_l,
+            "whole_pool_preventive_ml": c.data.metal_ex_pool_dose,
+            "whole_pool_discoloured_ml": c.data.metal_ex_problem_dose,
+            "refill_cm": c.refill_cm,
+            "surface_m2": c.data.surface,
+        },
+    ),
+    SmartPoolSensorDescription(
+        key="metal_ex_remaining",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=1,
+        value_fn=lambda c: c.data.metal_ex_hours_left,
     ),
     SmartPoolSensorDescription(
         key="energy_today",

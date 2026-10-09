@@ -20,6 +20,8 @@ Dauerbetrieb, Frostschutz) inklusive Trockenlaufschutz und Rückspül-Erinnerung
 | Sicherheit | Trockenlaufschutz über die Pumpenleistung, Schaltschutz gegen Flattern (min. 2 min), Pumpe nicht erreichbar → keine Befehle |
 | Wartung | Pumpenstunden seit Rückspülen, Rückspülen fällig (Stunden oder Tage), Button „Rückgespült“ |
 | Überwachung | Messung veraltet, Frostgefahr |
+| Metall-Ex | Nachfüllen per Knopf erfassen, Metall-Ex-Menge in ml, richtige Reihenfolge (pH → Metall-Ex → Chlor), Pumpe läuft während der Behandlung durch, danach Rückspül-Erinnerung |
+| Wetter & Regen | Regen letzte 24 h (Regenmesser oder aus Vorhersage geschätzt), Regen-Vorhersage in mm und Litern, Starkregen, Hitze/UV, Gewitter → Wetter-Hinweis und automatische Extra-Laufzeit |
 | Energie | Energie & Kosten heute (aus Energiezähler der Pumpe) |
 | Ereignisse | `smart_pool_event` für eigene Benachrichtigungen |
 
@@ -32,6 +34,9 @@ Dauerbetrieb, Frostschutz) inklusive Trockenlaufschutz und Rückspül-Erinnerung
 | **Automatik (Zeitplan)** | Startet ab der *Startzeit* und läuft, bis die Soll-Laufzeit erreicht ist. |
 | **Solar** | Startet, wenn die Solarleistung 10 min über der Schwelle liegt (optional nur ab Mindest-Akkustand). Stoppt erst nach 10 min ohne Überschuss. Ist die Soll-Laufzeit bis zur *Nachholzeit* nicht erreicht, läuft sie mit Netzstrom weiter. |
 | **Dauerbetrieb** | Pumpe läuft durchgehend (z. B. Neubefüllung, Schockchlorung, Algen). |
+
+Während einer **Metall-Ex-Behandlung** läuft die Pumpe in *Automatik*, *Solar* und *Winter* durch –
+unabhängig von der Tageslaufzeit. *Manuell* und *Aus* bleiben unangetastet.
 | **Winter / Frostschutz** | Bei Außentemperatur ≤ Frostgrenze läuft die Pumpe 15 min pro Stunde, sonst aus. |
 
 Bei einer **Pumpenstörung** (Trockenlauf) wird die Pumpe in allen Modi außer *Manuell*
@@ -55,7 +60,7 @@ Ordner `custom_components/smart_pool` nach `config/custom_components/` kopieren 
 (`switch` oder `input_boolean`).
 
 **Schritt 2 – optional:** Pumpenleistung, Pumpen-Energiezähler, Solarleistung, Akku-Ladestand,
-Außentemperatur, Zeitpunkt der letzten Messung.
+Außentemperatur, Zeitpunkt der letzten Messung, Wettervorhersage (`weather.*`), Regenmesser.
 
 Alle Parameter (Fördermenge, Min/Max-Laufzeit, Chlorprodukt, Trockenlauf-Grenze, Rückspül-Intervalle,
 Solar-Schwelle, Nachholzeit, Frostgrenze …) lassen sich später unter *Konfigurieren* ändern.
@@ -78,6 +83,12 @@ Solar-Schwelle, Nachholzeit, Frostgrenze …) lassen sich später unter *Konfigu
 | Einstellung | Wert | Begründung |
 |---|---|---|
 | Poolvolumen | **17,2 m³** | Herstellerangabe bei 90 % Füllung |
+| Wasserfläche | **15,0 m²** | 5,49 m × 2,74 m → 1 mm Regen = 15 l, 1 cm Wasserstand = 150 l |
+| Wettervorhersage | `weather.pirateweather` | liefert stündliche Vorhersage inkl. Regen und UV |
+| Metall-Ex pro m³ Frischwasser | **60 ml** | Steinbach Metall-EX: 0,3–0,6 l pro 10 m³ – oberer Wert wegen eisenhaltigem Brunnenwasser |
+| Metall-Ex pro m³ Becken | **30 ml** | vorbeugende Dosis für das ganze Becken |
+| Filterlaufzeit nach Metall-Ex | **48 h** | Herstellerangabe Steinbach |
+| Starkregen ab | **10 mm** in 24 h | |
 | Pumpen-Fördermenge | **0** (unbekannt) oder Wert vom Typenschild | Die Sandfilteranlage schafft das Volumen in ca. 3 h. Die Laufzeit-Regel Temperatur ÷ 2 liegt fast immer darüber |
 | Trockenlauf-Grenze | **300 W** | Die Pumpe zieht im Betrieb ca. 470 W (gemessen am Shelly-Stecker). Bei Luft im System oder Trockenlauf fällt die Leistung deutlich ab |
 | Aktivchlor-Gehalt | **56 %** (Dichlor-Granulat) bzw. dein Produkt | |
@@ -95,6 +106,8 @@ Daraus ergibt sich für diesen Pool:
 | Laufzeit bei 15 °C Wasser | 7,5 h (+1 h bei zu niedrigem Redox) |
 | Laufzeit im Hochsommer (ab 24 °C) | 12 h (Obergrenze) |
 | Stromkosten pro Laufstunde | ca. 0,47 kWh ≈ **0,14 €** |
+| Metall-Ex nach 2 cm Nachfüllen (300 l) | **20 ml** |
+| Metall-Ex ganzes Becken vorbeugend / bei Verfärbung | **520 ml** / **1030 ml** |
 
 ### Umstieg von bestehenden Automationen
 
@@ -118,8 +131,43 @@ Pumpen-Automationen deaktivieren – sonst schalten zwei Logiken dieselbe Pumpe.
 | `sensor.<pool>_chlor_dosierung`, `…_ph_minus_dosierung`, `…_ph_plus_dosierung` | Dosier-Richtwerte |
 | `sensor.<pool>_pumpenstunden_seit_ruckspulen`, `…_letztes_ruckspulen` | Wartung |
 | `sensor.<pool>_letzte_messung`, `…_energie_heute`, `…_kosten_heute` | Info |
-| `binary_sensor.<pool>_ruckspulen_fallig`, `…_messung_veraltet`, `…_pumpenstorung`, `…_frostgefahr` | Warnungen |
-| `button.<pool>_ruckgespult`, `…_storung_quittieren` | Aktionen |
+| `sensor.<pool>_wetter_hinweis`, `…_regen_letzte_24_h`, `…_regen_vorhersage_24_h` | Wetter & Regen |
+| `sensor.<pool>_metall_ex_dosierung`, `…_metall_ex_restzeit` | Metall-Ex |
+| `number.<pool>_nachfullmenge` | cm pro Nachfüllen |
+| `binary_sensor.<pool>_ruckspulen_fallig`, `…_messung_veraltet`, `…_pumpenstorung`, `…_frostgefahr`, `…_starkregen`, `…_metall_ex_behandlung` | Warnungen / Zustände |
+| `button.<pool>_ruckgespult`, `…_storung_quittieren`, `…_nachgefullt`, `…_metall_ex_zugegeben` | Aktionen |
+
+## Metall-Ex bei eisenhaltigem Brunnenwasser
+
+Eisen im Füllwasser oxidiert durch Chlor und färbt das Wasser braun/grün. Smart Pool führt
+deshalb durch die richtige Reihenfolge (nach Steinbach-Anleitung):
+
+1. **Nachgefüllt** drücken – vorher unter *Nachfüllmenge* die cm einstellen (Standard 2 cm).
+   Smart Pool rechnet die Liter aus und zeigt die **Metall-Ex-Dosierung** in ml.
+2. Der **Handlungshinweis** sagt, ob vorher der pH auf **7,0–7,4** gebracht werden muss, und
+   empfiehlt **kein Chlor**, bis Metall-Ex im Becken ist.
+3. Metall-Ex bei laufender Pumpe zugeben und **Metall-Ex zugegeben** drücken.
+   Die Pumpe läuft jetzt **48 h** durch (*Metall-Ex Restzeit*), Chlor ist wieder erlaubt.
+4. Danach meldet *Rückspülen fällig* – rückspülen und **Rückgespült** drücken.
+
+Für eine Behandlung des ganzen Beckens (z. B. bei Verfärbung) einfach direkt Metall-Ex zugeben
+und den Knopf drücken; die Mengen fürs ganze Becken stehen als Attribute an der
+*Metall-Ex-Dosierung*. Ab nächstem Jahr kann statt des Knopfs ein Durchflussmesser angebunden werden.
+
+## Wetter und Regen
+
+Mit einer Wettervorhersage (`weather.*`) holt Smart Pool alle 30 Minuten die stündliche
+Vorhersage (sonst die tägliche):
+
+| | Wirkung |
+|---|---|
+| **Regen letzte 24 h** | vom Regenmesser (Tages- oder Gesamtzähler) oder aus der stündlichen Vorhersage geschätzt |
+| **Starkregen** (≥ 10 mm) | +1 h Filterlaufzeit, Hinweis „pH und Redox prüfen“, Ereignis `heavy_rain` |
+| **Regen erwartet** (≥ 2 mm) | Hinweis „Nachfüllen mit Brunnenwasser verschieben“ inkl. erwarteter Liter – Regenwasser ist eisenfrei |
+| **Hitze ≥ 30 °C oder UV ≥ 7** | +1 h Filterlaufzeit, Hinweis „abends chloren“ |
+| **Gewitter** | Hinweis „danach Filter länger laufen lassen“ |
+
+Die Hinweise stehen im Sensor **Wetter-Hinweis** (`ok`, wenn nichts anliegt).
 
 ## Modern Pool Card
 
@@ -163,7 +211,8 @@ Hinweis: Die Karte zeigt die Betriebsarten mit ihren internen Namen (`manual`, `
 
 Die Integration verschickt selbst keine Nachrichten, sondern feuert `smart_pool_event` mit
 `type`: `water_quality_changed`, `measurement_stale`, `backwash_due`, `backwash_done`,
-`pump_fault`, `pump_started`, `pump_stopped`.
+`pump_fault`, `pump_started`, `pump_stopped`, `heavy_rain`, `refilled`, `metal_ex_added`,
+`metal_ex_done`.
 
 ```yaml
 triggers:

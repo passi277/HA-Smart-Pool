@@ -8,9 +8,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from typing import Any
 
 from .const import (
+    DEFAULT_WATER_DEPTH_M,
     FROST_RUN_MINUTES,
+    HIGH_UV,
+    HOT_TEMP,
+    METAL_EX_PH_RANGE,
+    METAL_EX_PH_TARGET,
     MIN_SWITCH_INTERVAL_SECONDS,
     MODE_AUTO,
     MODE_CONTINUOUS,
@@ -27,6 +33,7 @@ from .const import (
     QUALITY_CRITICAL,
     QUALITY_OK,
     QUALITY_UNKNOWN,
+    RAIN_HINT_MM,
     SOLAR_CONFIRM_SECONDS,
     STATUS_FAULT,
     STATUS_FROST_PROTECTION,
@@ -36,12 +43,14 @@ from .const import (
     STATUS_PUMP_UNAVAILABLE,
     STATUS_RUNNING_CATCHUP,
     STATUS_RUNNING_CONTINUOUS,
+    STATUS_RUNNING_METAL_EX,
     STATUS_RUNNING_SCHEDULE,
     STATUS_RUNNING_SOLAR,
     STATUS_TARGET_REACHED,
     STATUS_WAITING_SCHEDULE,
     STATUS_WAITING_SUN,
     STATUS_WINTER_IDLE,
+    THUNDER_CONDITIONS,
 )
 
 _SEVERITY = {QUALITY_UNKNOWN: 0, QUALITY_OK: 1, QUALITY_CHECK: 2, QUALITY_CRITICAL: 3}
@@ -83,6 +92,7 @@ def combine_quality(*statuses: str) -> str:
 def recommended_runtime(
     water_temp: float | None,
     *,
+    extra_hours: float = 0.0,
     volume_m3: float,
     pump_flow_m3h: float,
     orp_status: str,
@@ -102,6 +112,7 @@ def recommended_runtime(
         hours += 1
     elif orp_status == QUALITY_CRITICAL:
         hours += 2
+    hours += extra_hours
     hours = min(max(hours, min_hours), max(max_hours, min_hours))
     return round(hours * 2) / 2
 
@@ -152,44 +163,242 @@ _GUIDANCE_TEXT = {
         "ph_low": "pH zu niedrig: ca. {g} g pH-Plus zugeben",
         "orp_low": "Redox zu niedrig: ca. {g} g Chlor zugeben",
         "orp_high": "Redox zu hoch: kein Chlor zugeben",
+        "metal_ph_high": "Für Metall-Ex erst pH auf 7,0–7,4 senken (ca. {g} g pH-Minus)",
+        "metal_ph_low": "Für Metall-Ex erst pH auf 7,0–7,4 anheben (ca. {g} g pH-Plus)",
+        "metal_dose": "{ml} ml Metall-Ex bei laufender Pumpe zugeben – erst danach chloren",
+        "metal_running": "Metall-Ex wirkt noch {h} h – Pumpe laufen lassen",
+        "metal_backwash": "Metall-Ex fertig: Filter rückspülen",
     },
     "en": {
         "ph_high": "pH too high: add about {g} g pH minus",
         "ph_low": "pH too low: add about {g} g pH plus",
         "orp_low": "Redox too low: add about {g} g chlorine",
         "orp_high": "Redox too high: do not add chlorine",
+        "metal_ph_high": "Before metal remover lower pH to 7.0–7.4 (about {g} g pH minus)",
+        "metal_ph_low": "Before metal remover raise pH to 7.0–7.4 (about {g} g pH plus)",
+        "metal_dose": "Add {ml} ml metal remover with the pump running – chlorinate afterwards",
+        "metal_running": "Metal remover still working for {h} h – keep the pump running",
+        "metal_backwash": "Metal remover done: backwash the filter",
     },
 }
 GUIDANCE_OK = "ok"
 GUIDANCE_UNKNOWN = "unknown"
 
 
-def guidance(
+def _texts(language: str, table: dict[str, dict[str, str]]) -> dict[str, str]:
+    return table.get(language.split("-")[0], table["en"])
+
+
+@dataclass(slots=True)
+class GuidanceInputs:
+    """Everything the action hint depends on."""
+
+    ph: float | None
+    orp: float | None
+    volume_m3: float
+    ph_minus_g: float = 0.0
+    ph_plus_g: float = 0.0
+    chlorine_g: float = 0.0
+    metal_ex_pending_ml: float = 0.0
+    metal_ex_hours_left: float = 0.0
+    metal_ex_backwash: bool = False
+    language: str = "en"
+
+
+def guidance(inp: GuidanceInputs) -> str:
+    """Short action hint in the order the steps should be done.
+
+    Fresh (iron-rich) water first needs metal remover at pH 7.0-7.4 before
+    any chlorine, otherwise the iron oxidises and stains the water. Returns
+    "ok" when nothing needs to be done, the format the Modern Pool Card
+    expects.
+    """
+    text = _texts(inp.language, _GUIDANCE_TEXT)
+    parts: list[str] = []
+
+    if inp.metal_ex_pending_ml > 0:
+        minus, plus = metal_ex_ph_doses(inp.ph, volume_m3=inp.volume_m3)
+        if minus > 0:
+            parts.append(text["metal_ph_high"].format(g=f"{minus:.0f}"))
+        elif plus > 0:
+            parts.append(text["metal_ph_low"].format(g=f"{plus:.0f}"))
+        parts.append(text["metal_dose"].format(ml=f"{inp.metal_ex_pending_ml:.0f}"))
+        return " · ".join(parts)
+
+    if inp.metal_ex_hours_left > 0:
+        parts.append(text["metal_running"].format(h=f"{inp.metal_ex_hours_left:.0f}"))
+    elif inp.metal_ex_backwash:
+        parts.append(text["metal_backwash"])
+
+    if inp.ph is None and inp.orp is None:
+        return " · ".join(parts) or GUIDANCE_UNKNOWN
+    if inp.ph_minus_g > 0:
+        parts.append(text["ph_high"].format(g=f"{inp.ph_minus_g:.0f}"))
+    elif inp.ph_plus_g > 0:
+        parts.append(text["ph_low"].format(g=f"{inp.ph_plus_g:.0f}"))
+    if inp.chlorine_g > 0:
+        parts.append(text["orp_low"].format(g=f"{inp.chlorine_g:.0f}"))
+    elif inp.orp is not None and inp.orp > ORP_RANGES[2]:
+        parts.append(text["orp_high"])
+    return " · ".join(parts) or GUIDANCE_OK
+
+
+# --- Metal remover ---------------------------------------------------------
+
+
+def surface_area(volume_m3: float, configured_m2: float) -> float:
+    """Water surface in m², estimated from the volume if not configured."""
+    if configured_m2 > 0:
+        return configured_m2
+    return volume_m3 / DEFAULT_WATER_DEPTH_M
+
+
+def refill_liters(cm: float, surface_m2: float) -> float:
+    """Litres for raising the water level by `cm` (1 cm on 1 m² = 10 l)."""
+    return max(0.0, cm) * surface_m2 * 10
+
+
+def metal_ex_dose(liters: float, ml_per_m3: float) -> float:
+    """Millilitres of metal remover for the given amount of water."""
+    if liters <= 0 or ml_per_m3 <= 0:
+        return 0.0
+    return _round_to(liters / 1000 * ml_per_m3, 10)
+
+
+def metal_ex_ph_doses(ph: float | None, *, volume_m3: float) -> tuple[float, float]:
+    """(pH-minus g, pH-plus g) to bring pH into 7.0-7.4 before metal remover."""
+    if ph is None:
+        return 0.0, 0.0
+    low, high = METAL_EX_PH_RANGE
+    if ph > high:
+        steps = (ph - METAL_EX_PH_TARGET) / 0.1
+        return _round_to(steps * PH_MINUS_G_PER_M3_PER_STEP * volume_m3, 5), 0.0
+    if ph < low:
+        steps = (METAL_EX_PH_TARGET - ph) / 0.1
+        return 0.0, _round_to(steps * PH_PLUS_G_PER_M3_PER_STEP * volume_m3, 5)
+    return 0.0, 0.0
+
+
+# --- Weather ---------------------------------------------------------------
+
+
+@dataclass(slots=True)
+class ForecastSummary:
+    """Next 24 hours of the weather forecast."""
+
+    rain_mm: float = 0.0
+    max_temp: float | None = None
+    min_temp: float | None = None
+    uv_max: float | None = None
+    thunder: bool = False
+    current_hour_rain_mm: float | None = None
+
+
+def _as_float(value: Any) -> float | None:
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def summarize_forecast(
+    forecast: list[dict[str, Any]], now: datetime, *, hourly: bool
+) -> ForecastSummary:
+    """Summarise the next 24 h of a weather.get_forecasts response."""
+    summary = ForecastSummary()
+    horizon = now + timedelta(hours=24)
+    hour_start = now.replace(minute=0, second=0, microsecond=0)
+    temps: list[float] = []
+    lows: list[float] = []
+    uvs: list[float] = []
+    for item in forecast:
+        when = _parse_dt(item.get("datetime"))
+        if when is None:
+            continue
+        # Hourly: entries overlapping the next 24 h. Daily: only today.
+        if hourly and (when + timedelta(hours=1) <= now or when >= horizon):
+            continue
+        rain = _as_float(item.get("precipitation")) or 0.0
+        summary.rain_mm += rain
+        if hourly and when == hour_start:
+            summary.current_hour_rain_mm = rain
+        if (temp := _as_float(item.get("temperature"))) is not None:
+            temps.append(temp)
+        if (low := _as_float(item.get("templow"))) is not None:
+            lows.append(low)
+        if (uv := _as_float(item.get("uv_index"))) is not None:
+            uvs.append(uv)
+        if item.get("condition") in THUNDER_CONDITIONS:
+            summary.thunder = True
+        if not hourly:
+            break
+    summary.rain_mm = round(summary.rain_mm, 1)
+    summary.max_temp = max(temps) if temps else None
+    summary.min_temp = min(lows or temps) if (lows or temps) else None
+    summary.uv_max = max(uvs) if uvs else None
+    return summary
+
+
+def _parse_dt(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def weather_extra_hours(*, heavy_rain: bool, max_temp: float | None, uv_max: float | None) -> float:
+    """Extra filter hours: +1 after heavy rain, +1 on hot or high-UV days."""
+    extra = 1.0 if heavy_rain else 0.0
+    if (max_temp is not None and max_temp >= HOT_TEMP) or (
+        uv_max is not None and uv_max >= HIGH_UV
+    ):
+        extra += 1.0
+    return extra
+
+
+_WEATHER_TEXT = {
+    "de": {
+        "heavy_rain": "Starkregen ({mm} mm): pH und Redox prüfen, Filter läuft länger",
+        "rain": "{mm} mm Regen in 24 h erwartet (≈ {l} l) – Nachfüllen mit Brunnenwasser verschieben",
+        "thunder": "Gewitter erwartet – danach Filter länger laufen lassen",
+        "hot": "Hitze/hohe UV-Belastung – abends chloren, Filter läuft länger",
+    },
+    "en": {
+        "heavy_rain": "Heavy rain ({mm} mm): check pH and redox, filter runs longer",
+        "rain": "{mm} mm rain expected in 24 h (≈ {l} l) – postpone refilling",
+        "thunder": "Thunderstorm expected – run the filter longer afterwards",
+        "hot": "Heat/high UV – chlorinate in the evening, filter runs longer",
+    },
+}
+
+
+def weather_hint(
     *,
-    ph: float | None,
-    orp: float | None,
-    ph_minus_g: float,
-    ph_plus_g: float,
-    chlorine_g: float,
+    rain_last_24h: float,
+    heavy_rain: bool,
+    forecast: ForecastSummary | None,
+    surface_m2: float,
     language: str,
 ) -> str:
-    """Short action hint, pH first (correct pH before chlorinating).
-
-    Returns "ok" when nothing needs to be done, the format the Modern Pool
-    Card expects.
-    """
-    if ph is None and orp is None:
-        return GUIDANCE_UNKNOWN
-    text = _GUIDANCE_TEXT.get(language.split("-")[0], _GUIDANCE_TEXT["en"])
+    """Weather related advice, "ok" if there is nothing to mention."""
+    text = _texts(language, _WEATHER_TEXT)
     parts: list[str] = []
-    if ph_minus_g > 0:
-        parts.append(text["ph_high"].format(g=f"{ph_minus_g:.0f}"))
-    elif ph_plus_g > 0:
-        parts.append(text["ph_low"].format(g=f"{ph_plus_g:.0f}"))
-    if chlorine_g > 0:
-        parts.append(text["orp_low"].format(g=f"{chlorine_g:.0f}"))
-    elif orp is not None and orp > ORP_RANGES[2]:
-        parts.append(text["orp_high"])
+    if heavy_rain:
+        parts.append(text["heavy_rain"].format(mm=f"{rain_last_24h:.0f}"))
+    if forecast is not None:
+        if forecast.rain_mm >= RAIN_HINT_MM:
+            liters = forecast.rain_mm * surface_m2
+            parts.append(text["rain"].format(mm=f"{forecast.rain_mm:.0f}", l=f"{liters:.0f}"))
+        if forecast.thunder:
+            parts.append(text["thunder"])
+        if weather_extra_hours(
+            heavy_rain=False, max_temp=forecast.max_temp, uv_max=forecast.uv_max
+        ):
+            parts.append(text["hot"])
     return " · ".join(parts) or GUIDANCE_OK
 
 
@@ -228,6 +437,7 @@ class PumpInputs:
     frost_temp: float = 2.0
     fault: bool = False
     last_switch: datetime | None = None
+    metal_ex_active: bool = False
 
 
 @dataclass(slots=True)
@@ -256,6 +466,10 @@ def decide_pump(inp: PumpInputs) -> PumpDecision:
 def _decide_for_mode(inp: PumpInputs) -> PumpDecision:
     if inp.mode == MODE_CONTINUOUS:
         return PumpDecision(True, STATUS_RUNNING_CONTINUOUS)
+
+    # Metal remover needs the filter running for the whole treatment.
+    if inp.metal_ex_active:
+        return PumpDecision(True, STATUS_RUNNING_METAL_EX)
 
     if inp.mode == MODE_WINTER:
         if inp.air_temp is None:

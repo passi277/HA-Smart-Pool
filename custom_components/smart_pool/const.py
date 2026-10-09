@@ -21,6 +21,8 @@ CONF_SOLAR_POWER_ENTITY: Final = "solar_power_entity"
 CONF_BATTERY_SOC_ENTITY: Final = "battery_soc_entity"
 CONF_AIR_TEMP_ENTITY: Final = "air_temp_entity"
 CONF_LAST_MEASUREMENT_ENTITY: Final = "last_measurement_entity"
+CONF_WEATHER_ENTITY: Final = "weather_entity"
+CONF_RAIN_ENTITY: Final = "rain_entity"
 
 OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PUMP_POWER_ENTITY,
@@ -29,6 +31,8 @@ OPTIONAL_ENTITY_KEYS: Final = (
     CONF_BATTERY_SOC_ENTITY,
     CONF_AIR_TEMP_ENTITY,
     CONF_LAST_MEASUREMENT_ENTITY,
+    CONF_WEATHER_ENTITY,
+    CONF_RAIN_ENTITY,
 )
 
 # --- Tunable parameters (options) ------------------------------------------
@@ -45,6 +49,11 @@ CONF_BATTERY_MIN_SOC: Final = "battery_min_soc"
 CONF_CATCHUP_TIME: Final = "catchup_time"
 CONF_FROST_TEMP: Final = "frost_temp"
 CONF_STALE_HOURS: Final = "stale_hours"
+CONF_SURFACE: Final = "surface"
+CONF_HEAVY_RAIN: Final = "heavy_rain"
+CONF_METAL_EX_FRESH: Final = "metal_ex_fresh"
+CONF_METAL_EX_POOL: Final = "metal_ex_pool"
+CONF_METAL_EX_HOURS: Final = "metal_ex_hours"
 
 DEFAULTS: Final[dict[str, float | str]] = {
     CONF_VOLUME: 30.0,
@@ -61,7 +70,16 @@ DEFAULTS: Final[dict[str, float | str]] = {
     CONF_CATCHUP_TIME: "17:00:00",
     CONF_FROST_TEMP: 2.0,
     CONF_STALE_HOURS: 12.0,
+    CONF_SURFACE: 0.0,
+    CONF_HEAVY_RAIN: 10.0,
+    CONF_METAL_EX_FRESH: 60.0,
+    CONF_METAL_EX_POOL: 30.0,
+    CONF_METAL_EX_HOURS: 48.0,
 }
+
+# Without a configured surface the area is estimated from the volume.
+DEFAULT_WATER_DEPTH_M: Final = 1.2
+DEFAULT_REFILL_CM: Final = 2.0
 
 # --- Operating modes -------------------------------------------------------
 MODE_MANUAL: Final = "manual"
@@ -122,6 +140,7 @@ STATUS_RUNNING_CONTINUOUS: Final = "running_continuous"
 STATUS_FROST_PROTECTION: Final = "frost_protection"
 STATUS_WINTER_IDLE: Final = "winter_idle"
 STATUS_NO_AIR_TEMP: Final = "no_air_temp"
+STATUS_RUNNING_METAL_EX: Final = "running_metal_ex"
 
 STATUSES: Final = (
     STATUS_MANUAL,
@@ -138,6 +157,7 @@ STATUSES: Final = (
     STATUS_FROST_PROTECTION,
     STATUS_WINTER_IDLE,
     STATUS_NO_AIR_TEMP,
+    STATUS_RUNNING_METAL_EX,
 )
 
 # --- Event types fired on the bus -----------------------------------------
@@ -148,3 +168,18 @@ EVENT_BACKWASH_DONE: Final = "backwash_done"
 EVENT_PUMP_FAULT: Final = "pump_fault"
 EVENT_PUMP_STARTED: Final = "pump_started"
 EVENT_PUMP_STOPPED: Final = "pump_stopped"
+EVENT_HEAVY_RAIN: Final = "heavy_rain"
+EVENT_REFILLED: Final = "refilled"
+EVENT_METAL_EX_ADDED: Final = "metal_ex_added"
+EVENT_METAL_EX_DONE: Final = "metal_ex_done"
+
+# --- Weather ---------------------------------------------------------------
+WEATHER_REFRESH_SECONDS: Final = 1800
+RAIN_HINT_MM: Final = 2.0
+HOT_TEMP: Final = 30.0
+HIGH_UV: Final = 7.0
+THUNDER_CONDITIONS: Final = ("lightning", "lightning-rainy")
+
+# Steinbach Metall-EX and similar: pH 7.0-7.4 before dosing.
+METAL_EX_PH_RANGE: Final = (7.0, 7.4)
+METAL_EX_PH_TARGET: Final = 7.2

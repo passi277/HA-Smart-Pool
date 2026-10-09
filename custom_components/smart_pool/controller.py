@@ -28,6 +28,8 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .calculations import (
+    ForecastSummary,
+    GuidanceInputs,
     PumpInputs,
     chlorine_dose,
     classify_orp,
@@ -35,9 +37,15 @@ from .calculations import (
     combine_quality,
     decide_pump,
     guidance,
+    metal_ex_dose,
     ph_doses,
     recommended_runtime,
+    refill_liters,
     split_at_midnight,
+    summarize_forecast,
+    surface_area,
+    weather_extra_hours,
+    weather_hint,
 )
 from .const import (
     CONF_AIR_TEMP_ENTITY,
@@ -50,8 +58,12 @@ from .const import (
     CONF_CHLORINE_STRENGTH,
     CONF_DRY_RUN_POWER,
     CONF_FROST_TEMP,
+    CONF_HEAVY_RAIN,
     CONF_LAST_MEASUREMENT_ENTITY,
     CONF_MAX_RUNTIME,
+    CONF_METAL_EX_FRESH,
+    CONF_METAL_EX_HOURS,
+    CONF_METAL_EX_POOL,
     CONF_MIN_RUNTIME,
     CONF_ORP_ENTITY,
     CONF_PH_ENTITY,
@@ -59,12 +71,16 @@ from .const import (
     CONF_PUMP_ENTITY,
     CONF_PUMP_FLOW,
     CONF_PUMP_POWER_ENTITY,
+    CONF_RAIN_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
     CONF_SOLAR_THRESHOLD,
     CONF_STALE_HOURS,
+    CONF_SURFACE,
     CONF_VOLUME,
     CONF_WATER_TEMP_ENTITY,
+    CONF_WEATHER_ENTITY,
     DEFAULT_MODE,
+    DEFAULT_REFILL_CM,
     DEFAULT_START_TIME,
     DEFAULTS,
     DOMAIN,
@@ -72,10 +88,14 @@ from .const import (
     DRY_RUN_GRACE_SECONDS,
     EVENT_BACKWASH_DONE,
     EVENT_BACKWASH_DUE,
+    EVENT_HEAVY_RAIN,
     EVENT_MEASUREMENT_STALE,
+    EVENT_METAL_EX_ADDED,
+    EVENT_METAL_EX_DONE,
     EVENT_PUMP_FAULT,
     EVENT_PUMP_STARTED,
     EVENT_PUMP_STOPPED,
+    EVENT_REFILLED,
     EVENT_SMART_POOL,
     EVENT_WATER_QUALITY_CHANGED,
     MODE_AUTO,
@@ -85,6 +105,7 @@ from .const import (
     QUALITY_UNKNOWN,
     STATUS_MANUAL,
     TICK_SECONDS,
+    WEATHER_REFRESH_SECONDS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,6 +140,17 @@ class PoolData:
     energy_today: float | None = None
     cost_today: float | None = None
     frost_risk: bool = False
+    surface: float = 0.0
+    rain_last_24h: float | None = None
+    heavy_rain: bool = False
+    forecast: ForecastSummary | None = None
+    weather_extra_hours: float = 0.0
+    weather_hint: str = "ok"
+    fresh_water_l: float = 0.0
+    metal_ex_dose: float = 0.0
+    metal_ex_pool_dose: float = 0.0
+    metal_ex_problem_dose: float = 0.0
+    metal_ex_hours_left: float = 0.0
 
 
 def _parse_time(value: Any, fallback: str) -> time:
@@ -154,8 +186,16 @@ class SmartPoolController:
         self._backwash_s: float = 0.0
         self._energy_day_start: float | None = None
         self._energy_date: date | None = None
+        self.refill_cm: float = DEFAULT_REFILL_CM
+        self.fresh_water_l: float = 0.0
+        self.metal_ex_until: datetime | None = None
+        self.metal_ex_backwash: bool = False
+        self._rain_hours: dict[str, float] = {}
+        self._rain_last_value: float | None = None
 
         # Volatile state
+        self._forecast: ForecastSummary | None = None
+        self._forecast_fetched: datetime | None = None
         self._last_accum: datetime | None = None
         self._pump_on: bool | None = None
         self._pump_on_since: datetime | None = None
@@ -235,6 +275,14 @@ class SmartPoolController:
             self._energy_date = date.fromisoformat(raw)
         if raw := stored.get("last_backwash"):
             self.last_backwash = dt_util.parse_datetime(raw)
+        self.refill_cm = float(stored.get("refill_cm", DEFAULT_REFILL_CM))
+        self.fresh_water_l = float(stored.get("fresh_water_l", 0.0))
+        if raw := stored.get("metal_ex_until"):
+            self.metal_ex_until = dt_util.parse_datetime(raw)
+        self.metal_ex_backwash = bool(stored.get("metal_ex_backwash", False))
+        self._rain_hours = {k: float(v) for k, v in stored.get("rain_hours", {}).items()}
+        if stored.get("rain_last_value") is not None:
+            self._rain_last_value = float(stored["rain_last_value"])
 
     def _data_to_save(self) -> dict[str, Any]:
         return {
@@ -250,6 +298,12 @@ class SmartPoolController:
             "last_backwash": self.last_backwash.isoformat() if self.last_backwash else None,
             "energy_day_start": self._energy_day_start,
             "energy_date": self._energy_date.isoformat() if self._energy_date else None,
+            "refill_cm": self.refill_cm,
+            "fresh_water_l": self.fresh_water_l,
+            "metal_ex_until": self.metal_ex_until.isoformat() if self.metal_ex_until else None,
+            "metal_ex_backwash": self.metal_ex_backwash,
+            "rain_hours": self._rain_hours,
+            "rain_last_value": self._rain_last_value,
         }
 
     def _schedule_save(self) -> None:
@@ -329,7 +383,33 @@ class SmartPoolController:
         self._accumulate(dt_util.now())
         self._backwash_s = 0.0
         self.last_backwash = dt_util.now()
+        self.metal_ex_backwash = False
         self._fire(EVENT_BACKWASH_DONE)
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_set_refill_cm(self, value: float) -> None:
+        """Set how many cm the refill button adds."""
+        self.refill_cm = value
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_refilled(self) -> None:
+        """Record a refill with fresh water of `refill_cm` centimetres."""
+        liters = refill_liters(self.refill_cm, self.data.surface)
+        self.fresh_water_l += liters
+        self._fire(EVENT_REFILLED, cm=self.refill_cm, liters=round(liters))
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_metal_ex_added(self) -> None:
+        """Metal remover was dosed: start the treatment window."""
+        now = dt_util.now()
+        hours = float(self.config[CONF_METAL_EX_HOURS])
+        self._fire(EVENT_METAL_EX_ADDED, ml=self.data.metal_ex_dose, hours=hours)
+        self.fresh_water_l = 0.0
+        self.metal_ex_until = now + timedelta(hours=hours) if hours > 0 else None
+        self.metal_ex_backwash = False
         self._schedule_save()
         await self.async_update()
 
@@ -348,6 +428,7 @@ class SmartPoolController:
             now = dt_util.now()
             self._accumulate(now)
             self._read_pump(now)
+            await self._async_refresh_forecast(now)
             self._refresh(now)
             self._check_dry_run(now)
             await self._control_pump(now)
@@ -414,8 +495,25 @@ class SmartPoolController:
         data.quality = combine_quality(data.ph_status, data.orp_status)
 
         volume = float(cfg[CONF_VOLUME])
+        data.surface = round(surface_area(volume, float(cfg[CONF_SURFACE])), 2)
+        self._refresh_rain(now)
+        self._refresh_metal_ex(now)
+        forecast = data.forecast
+        data.weather_extra_hours = weather_extra_hours(
+            heavy_rain=data.heavy_rain,
+            max_temp=forecast.max_temp if forecast else None,
+            uv_max=forecast.uv_max if forecast else None,
+        )
+        data.weather_hint = weather_hint(
+            rain_last_24h=data.rain_last_24h or 0.0,
+            heavy_rain=data.heavy_rain,
+            forecast=forecast,
+            surface_m2=data.surface,
+            language=self.hass.config.language,
+        )
         data.recommended_runtime = recommended_runtime(
             data.water_temp,
+            extra_hours=data.weather_extra_hours,
             volume_m3=volume,
             pump_flow_m3h=float(cfg[CONF_PUMP_FLOW]),
             orp_status=data.orp_status,
@@ -437,12 +535,18 @@ class SmartPoolController:
         )
         data.ph_minus_dose, data.ph_plus_dose = ph_doses(data.ph, volume_m3=volume)
         data.guidance = guidance(
-            ph=data.ph,
-            orp=data.orp,
-            ph_minus_g=data.ph_minus_dose,
-            ph_plus_g=data.ph_plus_dose,
-            chlorine_g=data.chlorine_dose,
-            language=self.hass.config.language,
+            GuidanceInputs(
+                ph=data.ph,
+                orp=data.orp,
+                volume_m3=volume,
+                ph_minus_g=data.ph_minus_dose,
+                ph_plus_g=data.ph_plus_dose,
+                chlorine_g=data.chlorine_dose,
+                metal_ex_pending_ml=data.metal_ex_dose,
+                metal_ex_hours_left=data.metal_ex_hours_left,
+                metal_ex_backwash=self.metal_ex_backwash,
+                language=self.hass.config.language,
+            )
         )
 
         # Backwash
@@ -452,7 +556,7 @@ class SmartPoolController:
         due = hours_limit > 0 and data.backwash_hours >= hours_limit
         if self.last_backwash is not None and days_limit > 0:
             due = due or now - self.last_backwash >= timedelta(days=days_limit)
-        data.backwash_due = due
+        data.backwash_due = due or self.metal_ex_backwash
 
         # Measurement age
         data.last_measurement = self._last_measurement()
@@ -486,6 +590,91 @@ class SmartPoolController:
                 )
             if data.backwash_due and not prev_backwash:
                 self._fire(EVENT_BACKWASH_DUE, pump_hours=data.backwash_hours)
+
+    async def _async_refresh_forecast(self, now: datetime) -> None:
+        """Fetch the weather forecast every 30 minutes (hourly, else daily)."""
+        entity_id = self._entity(CONF_WEATHER_ENTITY)
+        if entity_id is None:
+            self.data.forecast = None
+            return
+        fetched = self._forecast_fetched
+        if fetched is not None and (now - fetched).total_seconds() < WEATHER_REFRESH_SECONDS:
+            self.data.forecast = self._forecast
+            return
+        self._forecast_fetched = now
+        for kind in ("hourly", "daily"):
+            try:
+                response = await self.hass.services.async_call(
+                    "weather",
+                    "get_forecasts",
+                    {ATTR_ENTITY_ID: entity_id, "type": kind},
+                    blocking=True,
+                    return_response=True,
+                )
+            except HomeAssistantError:
+                continue
+            items = (response or {}).get(entity_id, {}).get("forecast") or []
+            if items:
+                self._forecast = summarize_forecast(items, now, hourly=kind == "hourly")
+                break
+        else:
+            _LOGGER.debug("%s: no forecast from %s", self.name, entity_id)
+        self.data.forecast = self._forecast
+
+    def _refresh_rain(self, now: datetime) -> None:
+        """Track rain per hour from a rain gauge or, without one, the forecast."""
+        data = self.data
+        hour = now.replace(minute=0, second=0, microsecond=0)
+        key = hour.isoformat()
+        gauge = self._entity(CONF_RAIN_ENTITY)
+        if gauge:
+            value = self._state_float(CONF_RAIN_ENTITY)
+            if value is not None:
+                last = self._rain_last_value
+                if last is not None:
+                    # Daily totals reset to 0; then the new value is the delta.
+                    delta = value - last if value >= last else value
+                    self._rain_hours[key] = self._rain_hours.get(key, 0.0) + delta
+                self._rain_last_value = value
+        elif self._forecast is not None and self._forecast.current_hour_rain_mm is not None:
+            self._rain_hours[key] = self._forecast.current_hour_rain_mm
+
+        cutoff = hour - timedelta(hours=24)
+        self._rain_hours = {
+            k: v
+            for k, v in self._rain_hours.items()
+            if (when := dt_util.parse_datetime(k)) is not None and when > cutoff
+        }
+        if not gauge and self._forecast is None and not self._rain_hours:
+            data.rain_last_24h = None
+            data.heavy_rain = False
+            return
+        total = sum(self._rain_hours.values())
+        data.rain_last_24h = round(total, 1)
+        threshold = float(self.config[CONF_HEAVY_RAIN])
+        heavy = threshold > 0 and total >= threshold
+        if heavy and not data.heavy_rain and self._initialized:
+            self._fire(EVENT_HEAVY_RAIN, rain_mm=data.rain_last_24h)
+        data.heavy_rain = heavy
+
+    def _refresh_metal_ex(self, now: datetime) -> None:
+        data = self.data
+        cfg = self.config
+        volume = float(cfg[CONF_VOLUME])
+        if self.metal_ex_until is not None and now >= self.metal_ex_until:
+            self.metal_ex_until = None
+            self.metal_ex_backwash = True
+            self._fire(EVENT_METAL_EX_DONE)
+        remaining = (
+            (self.metal_ex_until - now).total_seconds() / 3600 if self.metal_ex_until else 0.0
+        )
+        data.metal_ex_hours_left = round(max(0.0, remaining), 1)
+        data.fresh_water_l = round(self.fresh_water_l)
+        data.metal_ex_dose = metal_ex_dose(self.fresh_water_l, float(cfg[CONF_METAL_EX_FRESH]))
+        data.metal_ex_pool_dose = metal_ex_dose(volume * 1000, float(cfg[CONF_METAL_EX_POOL]))
+        data.metal_ex_problem_dose = metal_ex_dose(
+            volume * 1000, 2 * float(cfg[CONF_METAL_EX_POOL])
+        )
 
     def _last_measurement(self) -> datetime | None:
         if entity_id := self._entity(CONF_LAST_MEASUREMENT_ENTITY):
@@ -574,6 +763,7 @@ class SmartPoolController:
                 frost_temp=float(self.config[CONF_FROST_TEMP]),
                 fault=self.fault,
                 last_switch=self._last_switch,
+                metal_ex_active=self.data.metal_ex_hours_left > 0,
             )
         )
         self.status = decision.status

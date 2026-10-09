@@ -7,6 +7,8 @@ from datetime import datetime, time, timedelta, timezone
 import pytest
 
 from custom_components.smart_pool.calculations import (
+    ForecastSummary,
+    GuidanceInputs,
     PumpInputs,
     chlorine_dose,
     classify_orp,
@@ -14,9 +16,16 @@ from custom_components.smart_pool.calculations import (
     combine_quality,
     decide_pump,
     guidance,
+    metal_ex_dose,
+    metal_ex_ph_doses,
     ph_doses,
     recommended_runtime,
+    refill_liters,
     split_at_midnight,
+    summarize_forecast,
+    surface_area,
+    weather_extra_hours,
+    weather_hint,
 )
 from custom_components.smart_pool.const import (
     MODE_AUTO,
@@ -194,16 +203,126 @@ def test_switch_guard_prevents_flapping():
     assert decision.turn_on is True
 
 
+def _g(**kw):
+    base = {"ph": 7.4, "orp": 700, "volume_m3": 17.2, "language": "de"}
+    base.update(kw)
+    return guidance(GuidanceInputs(**base))
+
+
 def test_guidance():
-    kwargs = {"ph_minus_g": 0, "ph_plus_g": 0, "chlorine_g": 0, "language": "de"}
-    assert guidance(ph=7.4, orp=700, **kwargs) == "ok"
-    assert guidance(ph=None, orp=None, **kwargs) == "unknown"
-    assert guidance(ph=7.4, orp=950, **kwargs) == "Redox zu hoch: kein Chlor zugeben"
-    text = guidance(ph=7.8, orp=535, ph_minus_g=1600, ph_plus_g=0, chlorine_g=70, language="de")
+    assert _g() == "ok"
+    assert _g(ph=None, orp=None) == "unknown"
+    assert _g(orp=950) == "Redox zu hoch: kein Chlor zugeben"
+    assert _g(ph=7.8, orp=535, ph_minus_g=1600, chlorine_g=70) == (
+        "pH zu hoch: ca. 1600 g pH-Minus zugeben · Redox zu niedrig: ca. 70 g Chlor zugeben"
+    )
+    assert _g(ph=7.0, ph_plus_g=1600, language="en-GB") == "pH too low: add about 1600 g pH plus"
+
+
+def test_guidance_metal_ex_comes_before_chlorine():
+    # Fresh water pending: no chlorine advice, pH must be 7.0-7.4 first.
+    text = _g(ph=7.6, orp=535, chlorine_g=30, metal_ex_pending_ml=180)
+    assert text == (
+        "Für Metall-Ex erst pH auf 7,0–7,4 senken (ca. 690 g pH-Minus) · "
+        "180 ml Metall-Ex bei laufender Pumpe zugeben – erst danach chloren"
+    )
+    assert "Chlor zugeben" not in text
+    assert _g(ph=7.2, metal_ex_pending_ml=180).startswith("180 ml Metall-Ex")
+    running = _g(orp=535, chlorine_g=30, metal_ex_hours_left=30)
+    assert running == (
+        "Metall-Ex wirkt noch 30 h – Pumpe laufen lassen · Redox zu niedrig: ca. 30 g Chlor zugeben"
+    )
+    assert _g(metal_ex_backwash=True) == "Metall-Ex fertig: Filter rückspülen"
+
+
+def test_metal_ex_helpers():
+    assert surface_area(17.2, 15.04) == 15.04
+    assert surface_area(12, 0) == 10
+    assert refill_liters(2, 15) == 300
+    assert metal_ex_dose(300, 60) == 20
+    assert metal_ex_dose(17200, 30) == 520
+    assert metal_ex_dose(0, 60) == 0
+    assert metal_ex_ph_doses(7.2, volume_m3=17.2) == (0, 0)
+    assert metal_ex_ph_doses(6.8, volume_m3=17.2) == (0, 690)
+
+
+def _fc(hour: int, **kw):
+    item = {"datetime": _now(hour).isoformat(), "precipitation": 0, "temperature": 20}
+    item.update(kw)
+    return item
+
+
+def test_summarize_hourly_forecast():
+    now = _now(12, 20)
+    forecast = [
+        _fc(11, precipitation=5),  # past hour, ignored
+        _fc(12, precipitation=1.5, uv_index=3),
+        _fc(13, precipitation=2, temperature=31, condition="lightning-rainy"),
+        _fc(18, temperature=12, uv_index=8),
+        {"datetime": (now + timedelta(hours=30)).isoformat(), "precipitation": 50},
+    ]
+    summary = summarize_forecast(forecast, now, hourly=True)
+    assert summary.rain_mm == 3.5
+    assert summary.current_hour_rain_mm == 1.5
+    assert summary.max_temp == 31
+    assert summary.min_temp == 12
+    assert summary.uv_max == 8
+    assert summary.thunder is True
+
+
+def test_summarize_daily_forecast():
+    forecast = [
+        {"datetime": _now(0).isoformat(), "precipitation": 12, "temperature": 24, "templow": 9},
+        {"datetime": (_now(0) + timedelta(days=1)).isoformat(), "precipitation": 30},
+    ]
+    summary = summarize_forecast(forecast, _now(8), hourly=False)
+    assert (summary.rain_mm, summary.max_temp, summary.min_temp) == (12, 24, 9)
+    assert summary.current_hour_rain_mm is None
+
+
+def test_weather_extra_hours_and_hint():
+    assert weather_extra_hours(heavy_rain=False, max_temp=25, uv_max=5) == 0
+    assert weather_extra_hours(heavy_rain=True, max_temp=31, uv_max=None) == 2
+    assert weather_extra_hours(heavy_rain=False, max_temp=None, uv_max=7) == 1
     assert (
-        text == "pH zu hoch: ca. 1600 g pH-Minus zugeben · Redox zu niedrig: ca. 70 g Chlor zugeben"
+        recommended_runtime(
+            15,
+            extra_hours=2,
+            volume_m3=17.2,
+            pump_flow_m3h=0,
+            orp_status="ok",
+            min_hours=2,
+            max_hours=12,
+        )
+        == 9.5
     )
-    english = guidance(
-        ph=7.0, orp=700, ph_minus_g=0, ph_plus_g=1600, chlorine_g=0, language="en-GB"
+
+    forecast = ForecastSummary(rain_mm=6.8, max_temp=31, thunder=True)
+    hint = weather_hint(
+        rain_last_24h=12, heavy_rain=True, forecast=forecast, surface_m2=15, language="de"
     )
-    assert english == "pH too low: add about 1600 g pH plus"
+    assert hint == (
+        "Starkregen (12 mm): pH und Redox prüfen, Filter läuft länger · "
+        "7 mm Regen in 24 h erwartet (≈ 102 l) – Nachfüllen mit Brunnenwasser verschieben · "
+        "Gewitter erwartet – danach Filter länger laufen lassen · "
+        "Hitze/hohe UV-Belastung – abends chloren, Filter läuft länger"
+    )
+    assert (
+        weather_hint(
+            rain_last_24h=0,
+            heavy_rain=False,
+            forecast=ForecastSummary(),
+            surface_m2=15,
+            language="de",
+        )
+        == "ok"
+    )
+
+
+def test_metal_ex_keeps_pump_running():
+    decision = decide_pump(_inputs(runtime_today_h=10, metal_ex_active=True))
+    assert (decision.turn_on, decision.status) == (True, "running_metal_ex")
+    off = decide_pump(_inputs(mode=MODE_OFF, pump_on=True, metal_ex_active=True))
+    assert off.turn_on is False
+    manual = decide_pump(_inputs(mode=MODE_MANUAL, metal_ex_active=True))
+    assert manual.turn_on is None

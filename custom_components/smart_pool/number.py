@@ -10,7 +10,7 @@ from homeassistant.components.number import (
     NumberEntityDescription,
     NumberMode,
 )
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import EntityCategory, UnitOfLength, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
@@ -37,6 +37,17 @@ NUMBERS: tuple[SmartPoolNumberDescription, ...] = (
         mode=NumberMode.BOX,
         value_fn=lambda c: c.data.target_runtime,
         set_fn=lambda c, v: c.async_set_target_runtime(v),
+    ),
+    SmartPoolNumberDescription(
+        key="refill_cm",
+        entity_category=EntityCategory.CONFIG,
+        native_min_value=0.5,
+        native_max_value=30,
+        native_step=0.5,
+        native_unit_of_measurement=UnitOfLength.CENTIMETERS,
+        mode=NumberMode.BOX,
+        value_fn=lambda c: c.refill_cm,
+        set_fn=lambda c, v: c.async_set_refill_cm(v),
     ),
     SmartPoolNumberDescription(
         key="electricity_price",

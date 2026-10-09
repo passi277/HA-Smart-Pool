@@ -27,8 +27,12 @@ from .const import (
     CONF_CHLORINE_STRENGTH,
     CONF_DRY_RUN_POWER,
     CONF_FROST_TEMP,
+    CONF_HEAVY_RAIN,
     CONF_LAST_MEASUREMENT_ENTITY,
     CONF_MAX_RUNTIME,
+    CONF_METAL_EX_FRESH,
+    CONF_METAL_EX_HOURS,
+    CONF_METAL_EX_POOL,
     CONF_MIN_RUNTIME,
     CONF_ORP_ENTITY,
     CONF_PH_ENTITY,
@@ -36,11 +40,14 @@ from .const import (
     CONF_PUMP_ENTITY,
     CONF_PUMP_FLOW,
     CONF_PUMP_POWER_ENTITY,
+    CONF_RAIN_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
     CONF_SOLAR_THRESHOLD,
     CONF_STALE_HOURS,
+    CONF_SURFACE,
     CONF_VOLUME,
     CONF_WATER_TEMP_ENTITY,
+    CONF_WEATHER_ENTITY,
     DEFAULTS,
     DOMAIN,
     OPTIONAL_ENTITY_KEYS,
@@ -107,6 +114,10 @@ def _optional_entities_schema(values: dict[str, Any]) -> dict[Any, Any]:
         CONF_BATTERY_SOC_ENTITY: _sensor(SensorDeviceClass.BATTERY),
         CONF_AIR_TEMP_ENTITY: _sensor(SensorDeviceClass.TEMPERATURE),
         CONF_LAST_MEASUREMENT_ENTITY: _sensor(SensorDeviceClass.TIMESTAMP),
+        CONF_WEATHER_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="weather")
+        ),
+        CONF_RAIN_ENTITY: _sensor(SensorDeviceClass.PRECIPITATION),
     }
     return {
         vol.Optional(key, description={"suggested_value": values.get(key)}): sel
@@ -119,6 +130,7 @@ def _parameters_schema(values: dict[str, Any]) -> dict[Any, Any]:
         return values.get(key, DEFAULTS[key])
 
     return {
+        vol.Required(CONF_SURFACE, default=default(CONF_SURFACE)): _number(0, 500, 0.1, "m²"),
         vol.Required(CONF_PUMP_FLOW, default=default(CONF_PUMP_FLOW)): _number(0, 100, 0.5, "m³/h"),
         vol.Required(CONF_MIN_RUNTIME, default=default(CONF_MIN_RUNTIME)): _number(0, 24, 0.5, "h"),
         vol.Required(CONF_MAX_RUNTIME, default=default(CONF_MAX_RUNTIME)): _number(0, 24, 0.5, "h"),
@@ -150,6 +162,16 @@ def _parameters_schema(values: dict[str, Any]) -> dict[Any, Any]:
             -20, 10, 0.5, "°C"
         ),
         vol.Required(CONF_STALE_HOURS, default=default(CONF_STALE_HOURS)): _number(0, 168, 1, "h"),
+        vol.Required(CONF_HEAVY_RAIN, default=default(CONF_HEAVY_RAIN)): _number(0, 200, 1, "mm"),
+        vol.Required(CONF_METAL_EX_FRESH, default=default(CONF_METAL_EX_FRESH)): _number(
+            0, 500, 5, "ml/m³"
+        ),
+        vol.Required(CONF_METAL_EX_POOL, default=default(CONF_METAL_EX_POOL)): _number(
+            0, 500, 5, "ml/m³"
+        ),
+        vol.Required(CONF_METAL_EX_HOURS, default=default(CONF_METAL_EX_HOURS)): _number(
+            0, 168, 1, "h"
+        ),
     }
 
 

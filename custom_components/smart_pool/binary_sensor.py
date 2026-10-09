@@ -42,6 +42,16 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         value_fn=lambda c: c.fault,
     ),
     SmartPoolBinarySensorDescription(
+        key="heavy_rain",
+        device_class=BinarySensorDeviceClass.MOISTURE,
+        value_fn=lambda c: c.data.heavy_rain,
+    ),
+    SmartPoolBinarySensorDescription(
+        key="metal_ex_active",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=lambda c: c.data.metal_ex_hours_left > 0,
+    ),
+    SmartPoolBinarySensorDescription(
         key="frost_risk",
         device_class=BinarySensorDeviceClass.COLD,
         value_fn=lambda c: c.data.frost_risk,

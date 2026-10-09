@@ -21,7 +21,9 @@
           "solar_power_entity": "Solarleistung (W)",
           "battery_soc_entity": "Akku-Ladestand",
           "air_temp_entity": "Außentemperatur",
-          "last_measurement_entity": "Zeitpunkt letzte Messung"
+          "last_measurement_entity": "Zeitpunkt letzte Messung",
+          "weather_entity": "Wettervorhersage",
+          "rain_entity": "Regenmesser (mm)"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -29,7 +31,9 @@
           "solar_power_entity": "Für den Solar-Modus.",
           "battery_soc_entity": "Optional: Solar-Modus startet erst ab Mindest-Ladestand.",
           "air_temp_entity": "Für Winter / Frostschutz.",
-          "last_measurement_entity": "Leer = letzte Meldung des pH-Sensors."
+          "last_measurement_entity": "Leer = letzte Meldung des pH-Sensors.",
+          "weather_entity": "Regen-, Hitze- und UV-Vorhersage für Laufzeit und Hinweise.",
+          "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."
         }
       }
     },
@@ -58,6 +62,8 @@
           "battery_soc_entity": "Akku-Ladestand",
           "air_temp_entity": "Außentemperatur",
           "last_measurement_entity": "Zeitpunkt letzte Messung",
+          "weather_entity": "Wettervorhersage",
+          "rain_entity": "Regenmesser (mm)",
           "pump_flow": "Pumpen-Fördermenge (0 = unbekannt)",
           "min_runtime": "Minimale Tageslaufzeit",
           "max_runtime": "Maximale Tageslaufzeit",
@@ -70,7 +76,12 @@
           "battery_min_soc": "Mindest-Akkustand für Solar",
           "catchup_time": "Nachholen ab (Solar-Modus)",
           "frost_temp": "Frostschutz unter",
-          "stale_hours": "Messung veraltet nach"
+          "stale_hours": "Messung veraltet nach",
+          "surface": "Wasserfläche (0 = schätzen)",
+          "heavy_rain": "Starkregen ab (24 h)",
+          "metal_ex_fresh": "Metall-Ex pro m³ Frischwasser",
+          "metal_ex_pool": "Metall-Ex pro m³ Becken (vorbeugend)",
+          "metal_ex_hours": "Filterlaufzeit nach Metall-Ex"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -79,9 +90,14 @@
           "battery_soc_entity": "Optional: Solar-Modus startet erst ab Mindest-Ladestand.",
           "air_temp_entity": "Für Winter / Frostschutz.",
           "last_measurement_entity": "Leer = letzte Meldung des pH-Sensors.",
+          "weather_entity": "Regen-, Hitze- und UV-Vorhersage für Laufzeit und Hinweise.",
+          "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt.",
           "pump_flow": "Wenn gesetzt, wird mindestens einmal das ganze Wasser umgewälzt.",
           "chlorine_strength": "z. B. 56 % Dichlor-Granulat, 65–70 % Calciumhypochlorit, 90 % Trichlor-Tabletten.",
           "dry_run_power": "Pumpe wird gestoppt, wenn die Leistung 2 Minuten darunter liegt.",
+          "surface": "Für Regen- und Nachfüll-Liter (1 mm Regen = 1 l pro m²).",
+          "metal_ex_fresh": "Steinbach Metall-EX: 30–60 ml pro m³; bei eisenhaltigem Brunnenwasser den oberen Wert.",
+          "metal_ex_hours": "So lange läuft die Pumpe nach der Zugabe durch (Steinbach: mind. 48 h), danach rückspülen.",
           "catchup_time": "Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom."
         }
       }
@@ -132,7 +148,8 @@
           "running_continuous": "Läuft (Dauerbetrieb)",
           "frost_protection": "Frostschutz",
           "winter_idle": "Winter – Pause",
-          "no_air_temp": "Keine Außentemperatur"
+          "no_air_temp": "Keine Außentemperatur",
+          "running_metal_ex": "Läuft (Metall-Ex)"
         }
       },
       "recommended_runtime": {
@@ -165,6 +182,21 @@
       "ph_plus_dose": {
         "name": "pH-Plus-Dosierung"
       },
+      "weather_hint": {
+        "name": "Wetter-Hinweis"
+      },
+      "rain_last_24h": {
+        "name": "Regen letzte 24 h"
+      },
+      "rain_forecast_24h": {
+        "name": "Regen-Vorhersage 24 h"
+      },
+      "metal_ex_dose": {
+        "name": "Metall-Ex-Dosierung"
+      },
+      "metal_ex_remaining": {
+        "name": "Metall-Ex Restzeit"
+      },
       "energy_today": {
         "name": "Energie heute"
       },
@@ -184,6 +216,12 @@
       },
       "frost_risk": {
         "name": "Frostgefahr"
+      },
+      "heavy_rain": {
+        "name": "Starkregen"
+      },
+      "metal_ex_active": {
+        "name": "Metall-Ex-Behandlung"
       }
     },
     "select": {
@@ -215,6 +253,9 @@
       },
       "electricity_price": {
         "name": "Strompreis"
+      },
+      "refill_cm": {
+        "name": "Nachfüllmenge"
       }
     },
     "button": {
@@ -223,6 +264,12 @@
       },
       "reset_fault": {
         "name": "Störung quittieren"
+      },
+      "refilled": {
+        "name": "Nachgefüllt"
+      },
+      "metal_ex_added": {
+        "name": "Metall-Ex zugegeben"
       }
     }
   }
