@@ -316,11 +316,13 @@ async def test_set_maintenance_date(
     assert float(hass.states.get("sensor.pool_pump_hours_since_backwash").state) == 31.5
     assert hass.states.get("sensor.pool_last_backwash").state.startswith("2026-09-10")
     await set_date("sand", "2026-03-15")
-    await set_date("seals", "2026-03-15")
+    await set_date("seals", "2026-03-16")
     await set_date("probe", "2026-03-15")
     maintenance = hass.states.get("binary_sensor.pool_maintenance_due")
     assert maintenance.state == "on"
     assert maintenance.attributes["tasks"] == ["probe"]  # 90 days are over
     assert maintenance.attributes["last_done"]["sand"] == "2026-03-15"
+    # Nested attributes must be copies, otherwise HA misses the change.
+    assert maintenance.attributes["last_done"]["seals"] == "2026-03-16"
     season = hass.states.get("sensor.pool_season")
     assert str(season.attributes["next_sand"]) == "2028-03-14"

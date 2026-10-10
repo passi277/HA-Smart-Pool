@@ -79,7 +79,7 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         value_fn=lambda c: bool(c.data.low_stock),
         attrs_fn=lambda c: {
             "products": c.data.low_stock,
-            "stock": c.chem.stock,
+            "stock": dict(c.chem.stock),
             "thresholds": c.stock_thresholds(),
         },
     ),
@@ -89,7 +89,7 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         value_fn=lambda c: bool(c.data.maintenance_due),
         attrs_fn=lambda c: {
             "tasks": c.data.maintenance_due,
-            "last_done": c.season.maintenance,
+            "last_done": dict(c.season.maintenance),
         },
     ),
     SmartPoolBinarySensorDescription(
