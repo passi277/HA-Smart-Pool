@@ -55,6 +55,7 @@ opt = {
  "motion_entity": t("Motion at the pool","Bewegung am Pool"),
  "presence_entity": t("Presence (home/away)","Anwesenheit (zuhause/weg)"),
  "shopping_list_entity": t("Shopping list","Einkaufsliste"),
+ "backwash_timer_entity": t("Backwash timer","Rückspül-Timer"),
 }
 opt_desc = {
  "pump_power_entity": t("Needed for dry-run protection.","Für den Trockenlaufschutz."),
@@ -67,6 +68,7 @@ opt_desc = {
  "visual_entity": t("Text like 'water clear' – cloudy, green, brown or dirty is detected.","Text wie „Wasser klar“ – trüb, grün, braun oder Schmutz wird erkannt."),
  "presence_entity": t("Motion is reported when this is not 'home'/'on'.","Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist."),
  "shopping_list_entity": t("Low chemicals are added automatically.","Knappe Pflegemittel werden automatisch eingetragen."),
+ "backwash_timer_entity": t("When this timer finishes, the backwash counts as done automatically.","Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt."),
  "rain_entity": t("Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.","Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."),
 }
 params = {

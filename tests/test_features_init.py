@@ -326,3 +326,38 @@ async def test_set_maintenance_date(
     assert maintenance.attributes["last_done"]["seals"] == "2026-03-16"
     season = hass.states.get("sensor.pool_season")
     assert str(season.attributes["next_sand"]) == "2028-03-14"
+
+
+async def test_backwash_reason_and_timer(
+    hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
+) -> None:
+    """Backwash due by days shows the reason; a finished timer resets it."""
+    freezer.move_to(datetime(2026, 10, 10, 12, tzinfo=dt_util.get_default_time_zone()))
+    entry = _entry(backwash_timer_entity="timer.backwash")
+    await _setup(hass, entry)
+    await hass.services.async_call(
+        DOMAIN,
+        "set_maintenance_date",
+        {
+            "config_entry_id": entry.entry_id,
+            "task": "backwash",
+            "date": "2026-09-10",
+            "pump_hours": 34,
+        },
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+    due = hass.states.get("binary_sensor.pool_backwash_due")
+    assert due.state == "on"
+    assert due.attributes["reason"] == "days"
+    assert due.attributes["days_since"] == 30
+    assert due.attributes["max_days"] == 14
+    assert due.attributes["pump_hours"] == 34
+
+    hass.bus.async_fire("timer.finished", {"entity_id": "timer.other"})
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.pool_backwash_due").state == "on"
+    hass.bus.async_fire("timer.finished", {"entity_id": "timer.backwash"})
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.pool_backwash_due").state == "off"
+    assert float(hass.states.get("sensor.pool_pump_hours_since_backwash").state) == 0

@@ -28,6 +28,7 @@ CONF_MOTION_ENTITY: Final = "motion_entity"
 CONF_PRESENCE_ENTITY: Final = "presence_entity"
 CONF_SHOPPING_LIST_ENTITY: Final = "shopping_list_entity"
 CONF_PUMP_WIFI_ENTITY: Final = "pump_wifi_entity"
+CONF_BACKWASH_TIMER_ENTITY: Final = "backwash_timer_entity"
 
 OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PUMP_POWER_ENTITY,
@@ -43,6 +44,7 @@ OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PRESENCE_ENTITY,
     CONF_SHOPPING_LIST_ENTITY,
     CONF_PUMP_WIFI_ENTITY,
+    CONF_BACKWASH_TIMER_ENTITY,
 )
 
 # --- Tunable parameters (options) ------------------------------------------

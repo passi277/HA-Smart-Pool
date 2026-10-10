@@ -20,6 +20,7 @@ from .const import (
     CONF_AIR_TEMP_ENTITY,
     CONF_BACKWASH_DAYS,
     CONF_BACKWASH_HOURS,
+    CONF_BACKWASH_TIMER_ENTITY,
     CONF_BATTERY_MIN_SOC,
     CONF_BATTERY_SOC_ENTITY,
     CONF_CATCHUP_TIME,
@@ -137,6 +138,9 @@ def _optional_entities_schema(values: dict[str, Any]) -> dict[Any, Any]:
             selector.EntitySelectorConfig(
                 domain=["person", "group", "input_boolean", "binary_sensor", "device_tracker"]
             )
+        ),
+        CONF_BACKWASH_TIMER_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="timer")
         ),
         CONF_SHOPPING_LIST_ENTITY: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="todo")

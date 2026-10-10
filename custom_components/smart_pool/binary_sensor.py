@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
+from .const import CONF_BACKWASH_DAYS, CONF_BACKWASH_HOURS
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
 
@@ -32,6 +33,13 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         key="backwash_due",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda c: c.data.backwash_due,
+        attrs_fn=lambda c: {
+            "reason": c.data.backwash_reason,
+            "pump_hours": c.data.backwash_hours,
+            "max_hours": c.config[CONF_BACKWASH_HOURS],
+            "days_since": None if c.data.backwash_days is None else int(c.data.backwash_days),
+            "max_days": c.config[CONF_BACKWASH_DAYS],
+        },
     ),
     SmartPoolBinarySensorDescription(
         key="measurement_stale",

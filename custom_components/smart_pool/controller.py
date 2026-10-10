@@ -68,6 +68,7 @@ from .const import (
     CONF_AIR_TEMP_ENTITY,
     CONF_BACKWASH_DAYS,
     CONF_BACKWASH_HOURS,
+    CONF_BACKWASH_TIMER_ENTITY,
     CONF_BATTERY_MIN_SOC,
     CONF_BATTERY_SOC_ENTITY,
     CONF_CATCHUP_TIME,
@@ -240,6 +241,8 @@ class PoolData:
     outages_today: int = 0
     connection_unstable: bool = False
     multitab_due_tabs: int = 0
+    backwash_days: float | None = None
+    backwash_reason: str | None = None
     multitab_next: datetime | None = None
 
 
@@ -357,6 +360,15 @@ class SmartPoolController:
         self._unsubs.append(
             async_track_time_interval(self.hass, self._handle_tick, timedelta(seconds=TICK_SECONDS))
         )
+        if timer := self._entity(CONF_BACKWASH_TIMER_ENTITY):
+            # A finished backwash timer means the filter was backwashed.
+            self._unsubs.append(
+                self.hass.bus.async_listen(
+                    "timer.finished",
+                    self._handle_backwash_timer,
+                    event_filter=callback(lambda data: data.get(ATTR_ENTITY_ID) == timer),
+                )
+            )
         await self.async_update()
 
     async def async_shutdown(self) -> None:
@@ -487,6 +499,10 @@ class SmartPoolController:
     @callback
     def _handle_state_change(self, event: Event[EventStateChangedData]) -> None:
         self.hass.async_create_task(self.async_update())
+
+    @callback
+    def _handle_backwash_timer(self, event: Event) -> None:
+        self.hass.async_create_task(self.async_backwash_done())
 
     @callback
     def _handle_tick(self, now: datetime) -> None:
@@ -896,10 +912,23 @@ class SmartPoolController:
         data.backwash_hours = round(self._backwash_s / 3600, 2)
         hours_limit = float(cfg[CONF_BACKWASH_HOURS])
         days_limit = float(cfg[CONF_BACKWASH_DAYS])
-        due = hours_limit > 0 and data.backwash_hours >= hours_limit
-        if self.last_backwash is not None and days_limit > 0:
-            due = due or now - self.last_backwash >= timedelta(days=days_limit)
-        data.backwash_due = due or self.metal_ex_backwash
+        by_hours = hours_limit > 0 and data.backwash_hours >= hours_limit
+        data.backwash_days = (
+            (now - self.last_backwash).total_seconds() / 86400 if self.last_backwash else None
+        )
+        by_days = (
+            data.backwash_days is not None and days_limit > 0 and data.backwash_days >= days_limit
+        )
+        data.backwash_reason = (
+            "metal_ex"
+            if self.metal_ex_backwash
+            else "hours"
+            if by_hours
+            else "days"
+            if by_days
+            else None
+        )
+        data.backwash_due = data.backwash_reason is not None
 
         # Measurement age
         stale_hours = float(cfg[CONF_STALE_HOURS])

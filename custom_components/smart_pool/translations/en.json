@@ -28,7 +28,8 @@
           "visual_entity": "Camera / AI finding (text)",
           "motion_entity": "Motion at the pool",
           "presence_entity": "Presence (home/away)",
-          "shopping_list_entity": "Shopping list"
+          "shopping_list_entity": "Shopping list",
+          "backwash_timer_entity": "Backwash timer"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -41,6 +42,7 @@
           "visual_entity": "Text like 'water clear' – cloudy, green, brown or dirty is detected.",
           "presence_entity": "Motion is reported when this is not 'home'/'on'.",
           "shopping_list_entity": "Low chemicals are added automatically.",
+          "backwash_timer_entity": "When this timer finishes, the backwash counts as done automatically.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast."
         }
       }
@@ -77,6 +79,7 @@
           "motion_entity": "Motion at the pool",
           "presence_entity": "Presence (home/away)",
           "shopping_list_entity": "Shopping list",
+          "backwash_timer_entity": "Backwash timer",
           "pump_flow": "Pump flow rate (0 = unknown)",
           "min_runtime": "Minimum daily runtime",
           "max_runtime": "Maximum daily runtime",
@@ -113,6 +116,7 @@
           "visual_entity": "Text like 'water clear' – cloudy, green, brown or dirty is detected.",
           "presence_entity": "Motion is reported when this is not 'home'/'on'.",
           "shopping_list_entity": "Low chemicals are added automatically.",
+          "backwash_timer_entity": "When this timer finishes, the backwash counts as done automatically.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.",
           "pump_flow": "If set, the runtime covers at least one full water turnover.",
           "chlorine_strength": "e.g. 56 % dichlor granulate, 65–70 % calcium hypochlorite, 90 % trichlor tablets.",

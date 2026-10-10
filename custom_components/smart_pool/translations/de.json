@@ -28,7 +28,8 @@
           "visual_entity": "Kamera-/KI-Befund (Text)",
           "motion_entity": "Bewegung am Pool",
           "presence_entity": "Anwesenheit (zuhause/weg)",
-          "shopping_list_entity": "Einkaufsliste"
+          "shopping_list_entity": "Einkaufsliste",
+          "backwash_timer_entity": "Rückspül-Timer"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -41,6 +42,7 @@
           "visual_entity": "Text wie „Wasser klar“ – trüb, grün, braun oder Schmutz wird erkannt.",
           "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
           "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
+          "backwash_timer_entity": "Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."
         }
       }
@@ -77,6 +79,7 @@
           "motion_entity": "Bewegung am Pool",
           "presence_entity": "Anwesenheit (zuhause/weg)",
           "shopping_list_entity": "Einkaufsliste",
+          "backwash_timer_entity": "Rückspül-Timer",
           "pump_flow": "Pumpen-Fördermenge (0 = unbekannt)",
           "min_runtime": "Minimale Tageslaufzeit",
           "max_runtime": "Maximale Tageslaufzeit",
@@ -113,6 +116,7 @@
           "visual_entity": "Text wie „Wasser klar“ – trüb, grün, braun oder Schmutz wird erkannt.",
           "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
           "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
+          "backwash_timer_entity": "Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt.",
           "pump_flow": "Wenn gesetzt, wird mindestens einmal das ganze Wasser umgewälzt.",
           "chlorine_strength": "z. B. 56 % Dichlor-Granulat, 65–70 % Calciumhypochlorit, 90 % Trichlor-Tabletten.",
