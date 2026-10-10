@@ -68,6 +68,8 @@ CONF_SAND_DAYS: Final = "sand_days"
 CONF_PROBE_DAYS: Final = "probe_days"
 CONF_SEALS_DAYS: Final = "seals_days"
 CONF_OUTAGE_LIMIT: Final = "outage_limit"
+CONF_MULTITAB_VOLUME: Final = "multitab_volume"
+CONF_MULTITAB_DAYS: Final = "multitab_days"
 
 DEFAULTS: Final[dict[str, float | str]] = {
     CONF_VOLUME: 30.0,
@@ -93,6 +95,8 @@ DEFAULTS: Final[dict[str, float | str]] = {
     CONF_PROBE_DAYS: 90.0,
     CONF_SEALS_DAYS: 365.0,
     CONF_OUTAGE_LIMIT: 5.0,
+    CONF_MULTITAB_VOLUME: 20.0,
+    CONF_MULTITAB_DAYS: 7.0,
 }
 
 # Without a configured surface the area is estimated from the volume.
@@ -208,6 +212,10 @@ MOTION_COOLDOWN_SECONDS: Final = 600
 
 SERVICE_LOG_DOSE: Final = "log_dose"
 SERVICE_START_PROGRAM: Final = "start_program"
+SERVICE_SET_MAINTENANCE_DATE: Final = "set_maintenance_date"
+ATTR_TASK: Final = "task"
+ATTR_DATE: Final = "date"
+ATTR_PUMP_HOURS: Final = "pump_hours"
 ATTR_CONFIG_ENTRY_ID: Final = "config_entry_id"
 ATTR_PRODUCT: Final = "product"
 ATTR_AMOUNT: Final = "amount"

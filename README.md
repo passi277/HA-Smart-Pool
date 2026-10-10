@@ -201,6 +201,24 @@ data:
   ob der Redox-Wert um mindestens 30 mV gestiegen ist. Zweimal hintereinander ohne Reaktion →
   *Sonde prüfen*, Hinweis im Handlungshinweis und Aufgabe „Sonde kalibrieren“. *Sonde kalibriert* setzt das zurück.
 
+### Multitabs
+
+Multitabs (z. B. ProPool Vario Tabs 7-in-1, 200 g) werden in **Tabs** erfasst. Smart Pool empfiehlt
+1 Tab je angefangene 20 m³ (einstellbar) und erinnert nach 7 Tagen (einstellbar) an den nächsten Tab –
+als *Multitab fällig* und im Handlungshinweis. Da Tabs langsam über Tage wirken, zählen sie nicht für den
+Sonden-Check.
+
+### Wartungsdaten rückwirkend eintragen
+
+```yaml
+action: smart_pool.set_maintenance_date
+data:
+  config_entry_id: <Smart-Pool-Eintrag>
+  task: backwash          # backwash, sand, probe, seals
+  date: "2026-09-10"
+  pump_hours: 31.5        # nur Rückspülen: Pumpenstunden seitdem
+```
+
 ## Vorräte und Einkaufsliste
 
 Unter **Vorrat …** den Bestand je Pflegemittel eintragen (g bzw. ml) – nur eingetragene Mittel werden
@@ -208,6 +226,7 @@ verfolgt. Jede Zugabe zieht die Menge ab. Fällt ein Vorrat unter die Grenze, ge
 das Mittel landet einmal auf der Einkaufsliste („Pool: Chlor-Granulat“).
 
 | Pflegemittel | knapp unter |
+| Multitabs | 2 Tabs |
 |---|---|
 | Chlor-Granulat | 3 normale Dosen (bei 17,2 m³: ca. 90 g) |
 | Chlor-Schock | 1 Schock-Dosis (10 mg/l, ca. 310 g) |

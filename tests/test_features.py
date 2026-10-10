@@ -182,3 +182,20 @@ def test_parse_visual():
     assert parse_visual("bräunliche Verfärbung, grünlicher Rand") == ["green", "brown"]
     assert parse_visual("Water is green") == ["green"]
     assert parse_visual(None) == []
+
+
+def test_multitab_helpers():
+    from custom_components.smart_pool.chemistry import multitab_next, multitab_tabs
+
+    assert multitab_tabs(17.2, 20) == 1
+    assert multitab_tabs(40, 20) == 2
+    assert multitab_tabs(41, 20) == 3
+    assert multitab_tabs(10, 0) == 1
+    assert multitab_next(None, 7) is None
+    assert multitab_next(NOW, 7) == NOW + timedelta(days=7)
+    assert multitab_next(NOW, 0) is None
+    chem = Chemistry()
+    chem.set_stock("multitab", 3)
+    chem.add_dose(NOW, "multitab", 1, orp=500)
+    assert chem.stock["multitab"] == 2
+    assert chem.pending_check is None  # slow-dissolving tabs are not probe-checked

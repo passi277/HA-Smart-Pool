@@ -52,12 +52,15 @@ from .calculations import (
 from .chemistry import (
     PRODUCT_CHLORINE,
     PRODUCT_METAL_EX,
+    PRODUCT_MULTITAB,
     PRODUCT_PH_MINUS,
     PRODUCT_PH_PLUS,
     PRODUCT_SHOCK,
     PRODUCTS,
     Chemistry,
     low_stock_thresholds,
+    multitab_next,
+    multitab_tabs,
     product_name,
     shock_dose,
 )
@@ -80,6 +83,8 @@ from .const import (
     CONF_METAL_EX_POOL,
     CONF_MIN_RUNTIME,
     CONF_MOTION_ENTITY,
+    CONF_MULTITAB_DAYS,
+    CONF_MULTITAB_VOLUME,
     CONF_ORP_ENTITY,
     CONF_OUTAGE_LIMIT,
     CONF_PH_ENTITY,
@@ -234,6 +239,8 @@ class PoolData:
     motion_away: bool = False
     outages_today: int = 0
     connection_unstable: bool = False
+    multitab_due_tabs: int = 0
+    multitab_next: datetime | None = None
 
 
 def _parse_time(value: Any, fallback: str) -> time:
@@ -583,7 +590,41 @@ class SmartPoolController:
             return data.ph_plus_dose or float(5 * round(volume * 10 / 5))
         if product == PRODUCT_METAL_EX:
             return data.metal_ex_dose or data.metal_ex_pool_dose
+        if product == PRODUCT_MULTITAB:
+            return float(self.multitab_tabs())
         return 0.0
+
+    def multitab_tabs(self) -> int:
+        """Tabs per dose for this pool."""
+        return multitab_tabs(
+            float(self.config[CONF_VOLUME]), float(self.config[CONF_MULTITAB_VOLUME])
+        )
+
+    def multitab_next(self) -> datetime | None:
+        """When the next multitab is due (None if none was logged yet)."""
+        last = self.chem.last_dose(PRODUCT_MULTITAB)
+        return multitab_next(last.time if last else None, float(self.config[CONF_MULTITAB_DAYS]))
+
+    async def async_set_maintenance_date(
+        self, task: str, when: date, pump_hours: float | None = None
+    ) -> None:
+        """Record a maintenance task done on a past date."""
+        if task == "backwash":
+            self._accumulate(dt_util.now())
+            self.last_backwash = datetime.combine(
+                when, time(12), tzinfo=dt_util.get_default_time_zone()
+            )
+            self._backwash_s = max(0.0, pump_hours or 0.0) * 3600
+            self.metal_ex_backwash = False
+        elif task in (TASK_SAND, TASK_PROBE, TASK_SEALS):
+            self.season.done(task, when)
+            if task == TASK_PROBE:
+                self.chem.probe_calibrated()
+            self._due_tasks.discard(task)
+        else:
+            raise HomeAssistantError(f"Unknown task {task}")
+        self._schedule_save()
+        await self.async_update()
 
     async def async_log_dose(self, product: str, amount: float | None) -> None:
         """Log a chemical addition (None = recommended amount)."""
@@ -825,6 +866,12 @@ class SmartPoolController:
             step_ppm=float(cfg[CONF_CHLORINE_STEP]),
         )
         data.ph_minus_dose, data.ph_plus_dose = ph_doses(data.ph, volume_m3=volume)
+        data.multitab_next = self.multitab_next()
+        data.multitab_due_tabs = (
+            self.multitab_tabs()
+            if data.multitab_next is not None and now >= data.multitab_next
+            else 0
+        )
         data.guidance = guidance(
             GuidanceInputs(
                 ph=data.ph,
@@ -840,6 +887,7 @@ class SmartPoolController:
                 after_shock=self._after_shock(data.last_measurement),
                 visual=tuple(data.visual),
                 probe_suspect=data.probe_suspect,
+                multitab_due_tabs=data.multitab_due_tabs,
                 language=self.hass.config.language,
             )
         )

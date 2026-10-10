@@ -16,6 +16,7 @@ log_dose:
             - ph_minus
             - ph_plus
             - metal_ex
+            - multitab
     amount:
       selector:
         number:
@@ -47,6 +48,36 @@ start_program:
         number:
           min: 0
           max: 336
+          step: 0.5
+          unit_of_measurement: h
+          mode: box
+
+set_maintenance_date:
+  fields:
+    config_entry_id:
+      required: true
+      selector:
+        config_entry:
+          integration: smart_pool
+    task:
+      required: true
+      selector:
+        select:
+          translation_key: task
+          options:
+            - backwash
+            - sand
+            - probe
+            - seals
+    date:
+      required: true
+      selector:
+        date:
+    pump_hours:
+      selector:
+        number:
+          min: 0
+          max: 10000
           step: 0.5
           unit_of_measurement: h
           mode: box

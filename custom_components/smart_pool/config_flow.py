@@ -35,6 +35,8 @@ from .const import (
     CONF_METAL_EX_POOL,
     CONF_MIN_RUNTIME,
     CONF_MOTION_ENTITY,
+    CONF_MULTITAB_DAYS,
+    CONF_MULTITAB_VOLUME,
     CONF_ORP_ENTITY,
     CONF_OUTAGE_LIMIT,
     CONF_PH_ENTITY,
@@ -192,6 +194,12 @@ def _parameters_schema(values: dict[str, Any]) -> dict[Any, Any]:
         ),
         vol.Required(CONF_METAL_EX_HOURS, default=default(CONF_METAL_EX_HOURS)): _number(
             0, 168, 1, "h"
+        ),
+        vol.Required(CONF_MULTITAB_VOLUME, default=default(CONF_MULTITAB_VOLUME)): _number(
+            1, 200, 1, "m³"
+        ),
+        vol.Required(CONF_MULTITAB_DAYS, default=default(CONF_MULTITAB_DAYS)): _number(
+            0, 60, 1, "d"
         ),
         vol.Required(CONF_SAND_DAYS, default=default(CONF_SAND_DAYS)): _number(0, 3650, 1, "d"),
         vol.Required(CONF_PROBE_DAYS, default=default(CONF_PROBE_DAYS)): _number(0, 3650, 1, "d"),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -11,6 +12,7 @@ PRODUCT_SHOCK = "shock"
 PRODUCT_PH_MINUS = "ph_minus"
 PRODUCT_PH_PLUS = "ph_plus"
 PRODUCT_METAL_EX = "metal_ex"
+PRODUCT_MULTITAB = "multitab"
 
 PRODUCTS = (
     PRODUCT_CHLORINE,
@@ -18,7 +20,9 @@ PRODUCTS = (
     PRODUCT_PH_MINUS,
     PRODUCT_PH_PLUS,
     PRODUCT_METAL_EX,
+    PRODUCT_MULTITAB,
 )
+# Multitabs dissolve over days, so they are not used for the probe check.
 CHLORINE_PRODUCTS = (PRODUCT_CHLORINE, PRODUCT_SHOCK)
 
 PRODUCT_UNITS = {
@@ -27,6 +31,7 @@ PRODUCT_UNITS = {
     PRODUCT_PH_MINUS: "g",
     PRODUCT_PH_PLUS: "g",
     PRODUCT_METAL_EX: "ml",
+    PRODUCT_MULTITAB: "Tab",
 }
 
 PRODUCT_NAMES = {
@@ -36,6 +41,7 @@ PRODUCT_NAMES = {
         PRODUCT_PH_MINUS: "pH-Minus",
         PRODUCT_PH_PLUS: "pH-Plus",
         PRODUCT_METAL_EX: "Metall-Ex",
+        PRODUCT_MULTITAB: "Multitabs",
     },
     "en": {
         PRODUCT_CHLORINE: "Chlorine granules",
@@ -43,6 +49,7 @@ PRODUCT_NAMES = {
         PRODUCT_PH_MINUS: "pH minus",
         PRODUCT_PH_PLUS: "pH plus",
         PRODUCT_METAL_EX: "Metal remover",
+        PRODUCT_MULTITAB: "Multi tabs",
     },
 }
 
@@ -86,6 +93,7 @@ def low_stock_thresholds(
         PRODUCT_PH_MINUS: round(volume_m3 * 60),
         PRODUCT_PH_PLUS: round(volume_m3 * 60),
         PRODUCT_METAL_EX: round(metal_ex_pool_ml),
+        PRODUCT_MULTITAB: 2,
     }
 
 
@@ -257,3 +265,17 @@ class Chemistry:
         self.probe_failures = 0
         self.pending_check = None
         self.last_rise_mv = None
+
+
+def multitab_tabs(volume_m3: float, m3_per_tab: float) -> int:
+    """Tabs per dose: one per started m3_per_tab of water."""
+    if m3_per_tab <= 0:
+        return 1
+    return max(1, math.ceil(volume_m3 / m3_per_tab - 1e-9))
+
+
+def multitab_next(last: datetime | None, interval_days: float) -> datetime | None:
+    """When the next multitab is due (None until the first one was logged)."""
+    if last is None or interval_days <= 0:
+        return None
+    return last + timedelta(days=interval_days)

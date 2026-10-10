@@ -37,6 +37,7 @@
   },
   "services": {
     "log_dose": { "service": "mdi:notebook-plus-outline" },
-    "start_program": { "service": "mdi:playlist-play" }
+    "start_program": { "service": "mdi:playlist-play" },
+    "set_maintenance_date": { "service": "mdi:calendar-check" }
   }
 }

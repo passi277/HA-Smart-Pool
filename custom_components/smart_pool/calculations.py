@@ -169,6 +169,7 @@ _GUIDANCE_TEXT = {
         "metal_dose": "{ml} ml Metall-Ex bei laufender Pumpe zugeben – erst danach chloren",
         "metal_running": "Metall-Ex wirkt noch {h} h – Pumpe laufen lassen",
         "metal_backwash": "Metall-Ex fertig: Filter rückspülen",
+        "multitab": "Multitab nachlegen: {n} Tab in Skimmer oder Dosierschwimmer",
         "after_shock": "Schockchlorung beendet: Wasserwerte prüfen",
         "visual_brown": "Wasser bräunlich (Kamera): Eisen – ca. {ml} ml Metall-Ex zugeben",
         "visual_green": "Wasser grün (Kamera): Algen-Programm starten",
@@ -187,6 +188,7 @@ _GUIDANCE_TEXT = {
         "metal_dose": "Add {ml} ml metal remover with the pump running – chlorinate afterwards",
         "metal_running": "Metal remover still working for {h} h – keep the pump running",
         "metal_backwash": "Metal remover done: backwash the filter",
+        "multitab": "Add a multi tab: {n} tab into skimmer or floating dispenser",
         "after_shock": "Shock chlorination finished: check the water values",
         "visual_brown": "Water brownish (camera): iron – add about {ml} ml metal remover",
         "visual_green": "Water green (camera): start the algae program",
@@ -221,6 +223,7 @@ class GuidanceInputs:
     after_shock: bool = False
     visual: tuple[str, ...] = ()
     probe_suspect: bool = False
+    multitab_due_tabs: int = 0
     language: str = "en"
 
 
@@ -250,6 +253,8 @@ def guidance(inp: GuidanceInputs) -> str:
         parts.append(text["metal_backwash"])
     if inp.after_shock:
         parts.append(text["after_shock"])
+    if inp.multitab_due_tabs > 0:
+        parts.append(text["multitab"].format(n=inp.multitab_due_tabs))
 
     values_ok = (
         inp.ph_minus_g <= 0 and inp.ph_plus_g <= 0 and inp.chlorine_g <= 0 and inp.ph is not None

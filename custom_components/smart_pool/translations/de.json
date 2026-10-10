@@ -95,6 +95,8 @@
           "metal_ex_fresh": "Metall-Ex pro m³ Frischwasser",
           "metal_ex_pool": "Metall-Ex pro m³ Becken (vorbeugend)",
           "metal_ex_hours": "Filterlaufzeit nach Metall-Ex",
+          "multitab_volume": "Wasser je Multitab",
+          "multitab_days": "Multitab alle (0 = keine Erinnerung)",
           "sand_days": "Filtersand wechseln alle",
           "probe_days": "Sonde kalibrieren alle",
           "seals_days": "Dichtungen prüfen alle",
@@ -118,6 +120,7 @@
           "surface": "Für Regen- und Nachfüll-Liter (1 mm Regen = 1 l pro m²).",
           "metal_ex_fresh": "Steinbach Metall-EX: 30–60 ml pro m³; bei eisenhaltigem Brunnenwasser den oberen Wert.",
           "metal_ex_hours": "So lange läuft die Pumpe nach der Zugabe durch (Steinbach: mind. 48 h), danach rückspülen.",
+          "multitab_volume": "Übliche 200-g-Multitabs: 1 Tab je 20–30 m³ pro Woche.",
           "catchup_time": "Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom."
         }
       }
@@ -236,6 +239,9 @@
       "consumption_metal_ex": {
         "name": "Verbrauch Metall-Ex"
       },
+      "consumption_multitab": {
+        "name": "Verbrauch Multitabs"
+      },
       "program_remaining": {
         "name": "Programm Restzeit"
       },
@@ -295,6 +301,9 @@
       "probe_check": {
         "name": "Sonde prüfen"
       },
+      "multitab_due": {
+        "name": "Multitab fällig"
+      },
       "stock_low": {
         "name": "Vorrat knapp"
       },
@@ -343,7 +352,8 @@
           "shock": "Chlor-Schock",
           "ph_minus": "pH-Minus",
           "ph_plus": "pH-Plus",
-          "metal_ex": "Metall-Ex"
+          "metal_ex": "Metall-Ex",
+          "multitab": "Multitabs"
         }
       }
     },
@@ -392,6 +402,9 @@
       },
       "stock_metal_ex": {
         "name": "Vorrat Metall-Ex"
+      },
+      "stock_multitab": {
+        "name": "Vorrat Multitabs"
       }
     },
     "button": {
@@ -442,7 +455,8 @@
         "shock": "Chlor-Schock",
         "ph_minus": "pH-Minus",
         "ph_plus": "pH-Plus",
-        "metal_ex": "Metall-Ex"
+        "metal_ex": "Metall-Ex",
+        "multitab": "Multitabs"
       }
     },
     "program": {
@@ -452,6 +466,14 @@
         "shock": "Schockchlorung",
         "new_fill": "Neubefüllung",
         "algae": "Algen"
+      }
+    },
+    "task": {
+      "options": {
+        "backwash": "Rückspülen",
+        "sand": "Filtersand",
+        "probe": "Sonde kalibriert",
+        "seals": "Dichtungen"
       }
     }
   },
@@ -471,6 +493,28 @@
         "amount": {
           "name": "Menge",
           "description": "Gramm (ml bei Metall-Ex). Leer = empfohlene Menge."
+        }
+      }
+    },
+    "set_maintenance_date": {
+      "name": "Wartungsdatum setzen",
+      "description": "Trägt ein, wann eine Wartung zuletzt erledigt wurde (auch rückwirkend).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pool",
+          "description": "Smart-Pool-Eintrag."
+        },
+        "task": {
+          "name": "Wartung",
+          "description": "Welche Wartung."
+        },
+        "date": {
+          "name": "Datum",
+          "description": "Wann sie erledigt wurde."
+        },
+        "pump_hours": {
+          "name": "Pumpenstunden seitdem",
+          "description": "Nur Rückspülen: Pumpenstunden seit diesem Tag."
         }
       }
     },

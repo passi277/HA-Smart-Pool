@@ -24,7 +24,7 @@ status = {
  "running_program": t("Running (program)","Läuft (Programm)"),
 }
 products = {"chlorine": t("Chlorine granules","Chlor-Granulat"), "shock": t("Shock chlorine","Chlor-Schock"),
- "ph_minus": t("pH minus","pH-Minus"), "ph_plus": t("pH plus","pH-Plus"), "metal_ex": t("Metal remover","Metall-Ex")}
+ "ph_minus": t("pH minus","pH-Minus"), "ph_plus": t("pH plus","pH-Plus"), "metal_ex": t("Metal remover","Metall-Ex"), "multitab": t("Multi tabs","Multitabs")}
 programs = {"none": t("None","Keines"), "boost": t("Boost","Boost"), "shock": t("Shock chlorination","Schockchlorung"),
  "new_fill": t("New fill","Neubefüllung"), "algae": t("Algae","Algen")}
 seasons = {"swim": t("Swimming season","Badesaison"), "winterize": t("Winterizing recommended","Einwintern empfohlen"),
@@ -88,6 +88,8 @@ params = {
  "metal_ex_fresh": t("Metal remover per m³ fresh water","Metall-Ex pro m³ Frischwasser"),
  "metal_ex_pool": t("Metal remover per m³ pool (preventive)","Metall-Ex pro m³ Becken (vorbeugend)"),
  "metal_ex_hours": t("Filter runtime after metal remover","Filterlaufzeit nach Metall-Ex"),
+ "multitab_volume": t("Water per multi tab","Wasser je Multitab"),
+ "multitab_days": t("Multi tab every (0 = no reminder)","Multitab alle (0 = keine Erinnerung)"),
  "sand_days": t("Replace filter sand every","Filtersand wechseln alle"),
  "probe_days": t("Calibrate probe every","Sonde kalibrieren alle"),
  "seals_days": t("Check seals every","Dichtungen prüfen alle"),
@@ -100,6 +102,7 @@ params_desc = {
  "surface": t("Used for rain and refill litres (1 mm rain = 1 l per m²).","Für Regen- und Nachfüll-Liter (1 mm Regen = 1 l pro m²)."),
  "metal_ex_fresh": t("Steinbach Metall-EX: 30–60 ml per m³; use the upper value for iron-rich well water.","Steinbach Metall-EX: 30–60 ml pro m³; bei eisenhaltigem Brunnenwasser den oberen Wert."),
  "metal_ex_hours": t("The pump runs continuously this long after dosing (Steinbach: at least 48 h), then backwash.","So lange läuft die Pumpe nach der Zugabe durch (Steinbach: mind. 48 h), danach rückspülen."),
+ "multitab_volume": t("Typical 200 g multi tabs: 1 tab per 20–30 m³ per week.","Übliche 200-g-Multitabs: 1 Tab je 20–30 m³ pro Woche."),
  "catchup_time": t("If the daily runtime is not reached by then, the pump runs on grid power.","Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom."),
 }
 out = {
@@ -161,6 +164,7 @@ out = {
    "frost_risk": {"name": t("Frost risk","Frostgefahr")},
    "heavy_rain": {"name": t("Heavy rain","Starkregen")},
    "probe_check": {"name": t("Check probe","Sonde prüfen")},
+   "multitab_due": {"name": t("Multi tab due","Multitab fällig")},
    "stock_low": {"name": t("Stock low","Vorrat knapp")},
    "maintenance_due": {"name": t("Maintenance due","Wartung fällig")},
    "visual_finding": {"name": t("Camera finding","Kamera-Befund auffällig")},
@@ -202,13 +206,20 @@ out["issues"] = {"pump_unstable": {
   "description": t("The pump switch was unavailable {count} times today (Wi-Fi signal: {wifi}). Check the Wi-Fi coverage or power supply of the plug.",
                    "Der Pumpen-Schalter war heute {count}× nicht erreichbar (WLAN-Signal: {wifi}). Prüfe den WLAN-Empfang oder die Stromversorgung des Steckers.")}}
 out["exceptions"] = {"entry_not_loaded": {"message": t("Smart Pool entry not found or not loaded.","Smart-Pool-Eintrag nicht gefunden oder nicht geladen.")}}
-out["selector"] = {"product": {"options": products}, "program": {"options": programs}}
+tasks = {"backwash": t("Backwash","Rückspülen"), "sand": t("Filter sand","Filtersand"), "probe": t("Probe calibration","Sonde kalibriert"), "seals": t("Pump seals","Dichtungen")}
+out["selector"] = {"product": {"options": products}, "program": {"options": programs}, "task": {"options": tasks}}
 out["services"] = {
  "log_dose": {"name": t("Log dose","Zugabe erfassen"),
    "description": t("Logs a chemical addition (updates consumption, stock and the probe check).","Erfasst eine Pflegemittel-Zugabe (Verbrauch, Vorrat und Sonden-Check)."),
    "fields": {"config_entry_id": {"name": t("Pool","Pool"), "description": t("Smart Pool entry.","Smart-Pool-Eintrag.")},
               "product": {"name": t("Product","Pflegemittel"), "description": t("What was added.","Was zugegeben wurde.")},
               "amount": {"name": t("Amount","Menge"), "description": t("Grams (ml for metal remover). Empty = recommended amount.","Gramm (ml bei Metall-Ex). Leer = empfohlene Menge.")}}},
+ "set_maintenance_date": {"name": t("Set maintenance date","Wartungsdatum setzen"),
+   "description": t("Records when a maintenance task was last done (also in the past).","Trägt ein, wann eine Wartung zuletzt erledigt wurde (auch rückwirkend)."),
+   "fields": {"config_entry_id": {"name": t("Pool","Pool"), "description": t("Smart Pool entry.","Smart-Pool-Eintrag.")},
+              "task": {"name": t("Task","Wartung"), "description": t("Which task.","Welche Wartung.")},
+              "date": {"name": t("Date","Datum"), "description": t("When it was done.","Wann sie erledigt wurde.")},
+              "pump_hours": {"name": t("Pump hours since","Pumpenstunden seitdem"), "description": t("Backwash only: pump hours since that day.","Nur Rückspülen: Pumpenstunden seit diesem Tag.")}}},
  "start_program": {"name": t("Start program","Programm starten"),
    "description": t("Starts a special program with automatic end; 'none' cancels.","Startet ein Sonderprogramm mit automatischem Ende; „Keines“ bricht ab."),
    "fields": {"config_entry_id": {"name": t("Pool","Pool"), "description": t("Smart Pool entry.","Smart-Pool-Eintrag.")},

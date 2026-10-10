@@ -122,6 +122,16 @@ class SmartPoolNumber(SmartPoolEntity, NumberEntity):
         self.entity_description = description
 
     @property
+    def native_step(self) -> float | None:
+        """Whole tabs for multitabs, otherwise the configured step."""
+        if (
+            self.entity_description.key == "dose_amount"
+            and self.controller.dose_product == "multitab"
+        ):
+            return 1
+        return super().native_step
+
+    @property
     def native_unit_of_measurement(self) -> str | None:
         """Unit; the dose amount follows the selected product."""
         if self.entity_description.key == "dose_amount":

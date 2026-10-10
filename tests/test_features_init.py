@@ -125,7 +125,9 @@ async def _todo_items(hass: HomeAssistant) -> list[str]:
 async def test_programs(hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory) -> None:
     """Boost runs the pump outside the schedule and ends automatically."""
     freezer.move_to(dt_util.start_of_local_day() + timedelta(hours=6))
-    hass.states.async_set("sensor.orp", "700")
+    # Report the readings at the frozen time, not at the real time of the fixture.
+    hass.states.async_set("sensor.ph", "7.2", force_update=True)
+    hass.states.async_set("sensor.orp", "700", force_update=True)
     entry = _entry()
     await _setup(hass, entry)
     events = async_capture_events(hass, EVENT_SMART_POOL)
@@ -267,3 +269,58 @@ async def test_solar_stats_and_weekly_report(
     diag = await async_get_config_entry_diagnostics(hass, entry)
     assert diag["mode"] == "continuous"
     assert "chemistry" in diag["stored"]
+
+
+async def test_multitab_reminder(
+    hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
+) -> None:
+    """A logged multi tab is due again after the interval."""
+    freezer.move_to(dt_util.start_of_local_day() + timedelta(hours=10))
+    hass.states.async_set("sensor.orp", "700")
+    entry = _entry()
+    await _setup(hass, entry)
+    await _select(hass, "select.pool_dose_product", "multitab")
+    amount = hass.states.get("number.pool_dose_amount")
+    assert float(amount.state) == 2  # 40 m³ / 20 m³ per tab
+    assert amount.attributes["step"] == 1
+    assert amount.attributes["unit_of_measurement"] == "Tab"
+    assert hass.states.get("binary_sensor.pool_multi_tab_due").state == "off"
+
+    await _press(hass, "button.pool_log_dose")
+    assert float(hass.states.get("sensor.pool_consumption_multi_tabs").state) == 2
+    await _advance(hass, freezer, timedelta(days=6))
+    assert hass.states.get("binary_sensor.pool_multi_tab_due").state == "off"
+    await _advance(hass, freezer, timedelta(days=1, minutes=1))
+    assert hass.states.get("binary_sensor.pool_multi_tab_due").state == "on"
+    assert hass.states.get("sensor.pool_guidance").state.startswith("Add a multi tab: 2 tab")
+
+
+async def test_set_maintenance_date(
+    hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
+) -> None:
+    """Past maintenance dates can be recorded, including backwash pump hours."""
+    freezer.move_to(datetime(2026, 10, 10, 12, tzinfo=dt_util.get_default_time_zone()))
+    entry = _entry()
+    await _setup(hass, entry)
+
+    async def set_date(task: str, date: str, **extra) -> None:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_maintenance_date",
+            {"config_entry_id": entry.entry_id, "task": task, "date": date, **extra},
+            blocking=True,
+        )
+        await hass.async_block_till_done()
+
+    await set_date("backwash", "2026-09-10", pump_hours=31.5)
+    assert float(hass.states.get("sensor.pool_pump_hours_since_backwash").state) == 31.5
+    assert hass.states.get("sensor.pool_last_backwash").state.startswith("2026-09-10")
+    await set_date("sand", "2026-03-15")
+    await set_date("seals", "2026-03-15")
+    await set_date("probe", "2026-03-15")
+    maintenance = hass.states.get("binary_sensor.pool_maintenance_due")
+    assert maintenance.state == "on"
+    assert maintenance.attributes["tasks"] == ["probe"]  # 90 days are over
+    assert maintenance.attributes["last_done"]["sand"] == "2026-03-15"
+    season = hass.states.get("sensor.pool_season")
+    assert str(season.attributes["next_sand"]) == "2028-03-14"

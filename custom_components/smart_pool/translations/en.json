@@ -95,6 +95,8 @@
           "metal_ex_fresh": "Metal remover per m³ fresh water",
           "metal_ex_pool": "Metal remover per m³ pool (preventive)",
           "metal_ex_hours": "Filter runtime after metal remover",
+          "multitab_volume": "Water per multi tab",
+          "multitab_days": "Multi tab every (0 = no reminder)",
           "sand_days": "Replace filter sand every",
           "probe_days": "Calibrate probe every",
           "seals_days": "Check seals every",
@@ -118,6 +120,7 @@
           "surface": "Used for rain and refill litres (1 mm rain = 1 l per m²).",
           "metal_ex_fresh": "Steinbach Metall-EX: 30–60 ml per m³; use the upper value for iron-rich well water.",
           "metal_ex_hours": "The pump runs continuously this long after dosing (Steinbach: at least 48 h), then backwash.",
+          "multitab_volume": "Typical 200 g multi tabs: 1 tab per 20–30 m³ per week.",
           "catchup_time": "If the daily runtime is not reached by then, the pump runs on grid power."
         }
       }
@@ -236,6 +239,9 @@
       "consumption_metal_ex": {
         "name": "Consumption Metal remover"
       },
+      "consumption_multitab": {
+        "name": "Consumption Multi tabs"
+      },
       "program_remaining": {
         "name": "Program remaining"
       },
@@ -295,6 +301,9 @@
       "probe_check": {
         "name": "Check probe"
       },
+      "multitab_due": {
+        "name": "Multi tab due"
+      },
       "stock_low": {
         "name": "Stock low"
       },
@@ -343,7 +352,8 @@
           "shock": "Shock chlorine",
           "ph_minus": "pH minus",
           "ph_plus": "pH plus",
-          "metal_ex": "Metal remover"
+          "metal_ex": "Metal remover",
+          "multitab": "Multi tabs"
         }
       }
     },
@@ -392,6 +402,9 @@
       },
       "stock_metal_ex": {
         "name": "Stock Metal remover"
+      },
+      "stock_multitab": {
+        "name": "Stock Multi tabs"
       }
     },
     "button": {
@@ -442,7 +455,8 @@
         "shock": "Shock chlorine",
         "ph_minus": "pH minus",
         "ph_plus": "pH plus",
-        "metal_ex": "Metal remover"
+        "metal_ex": "Metal remover",
+        "multitab": "Multi tabs"
       }
     },
     "program": {
@@ -452,6 +466,14 @@
         "shock": "Shock chlorination",
         "new_fill": "New fill",
         "algae": "Algae"
+      }
+    },
+    "task": {
+      "options": {
+        "backwash": "Backwash",
+        "sand": "Filter sand",
+        "probe": "Probe calibration",
+        "seals": "Pump seals"
       }
     }
   },
@@ -471,6 +493,28 @@
         "amount": {
           "name": "Amount",
           "description": "Grams (ml for metal remover). Empty = recommended amount."
+        }
+      }
+    },
+    "set_maintenance_date": {
+      "name": "Set maintenance date",
+      "description": "Records when a maintenance task was last done (also in the past).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Pool",
+          "description": "Smart Pool entry."
+        },
+        "task": {
+          "name": "Task",
+          "description": "Which task."
+        },
+        "date": {
+          "name": "Date",
+          "description": "When it was done."
+        },
+        "pump_hours": {
+          "name": "Pump hours since",
+          "description": "Backwash only: pump hours since that day."
         }
       }
     },

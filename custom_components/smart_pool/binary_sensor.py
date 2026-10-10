@@ -64,6 +64,16 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
         },
     ),
     SmartPoolBinarySensorDescription(
+        key="multitab_due",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda c: c.data.multitab_due_tabs > 0,
+        attrs_fn=lambda c: {
+            "tabs": c.multitab_tabs(),
+            "next": c.data.multitab_next,
+            "last": (e.time if (e := c.chem.last_dose("multitab")) else None),
+        },
+    ),
+    SmartPoolBinarySensorDescription(
         key="stock_low",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda c: bool(c.data.low_stock),
