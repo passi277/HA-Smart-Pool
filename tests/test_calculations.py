@@ -164,6 +164,22 @@ def test_auto_schedule():
     assert (done.turn_on, done.status) == (False, STATUS_TARGET_REACHED)
 
 
+def test_auto_switched_on_late_waits_for_next_start():
+    late = decide_pump(_inputs(now=_now(16, 20), mode_since=_now(16, 19)))
+    assert (late.turn_on, late.status) == (False, STATUS_WAITING_SCHEDULE)
+    armed = decide_pump(_inputs(now=_now(16, 20), mode_since=_now(9)))
+    assert armed.turn_on is True
+    next_day = decide_pump(_inputs(now=_now(10, 1) + timedelta(days=1), mode_since=_now(16, 19)))
+    assert next_day.turn_on is True
+
+
+def test_solar_switched_on_late_skips_catchup():
+    late = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), mode_since=_now(17, 10)))
+    assert (late.turn_on, late.status) == (False, STATUS_WAITING_SUN)
+    armed = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), mode_since=_now(16, 20)))
+    assert armed.status == STATUS_RUNNING_CATCHUP
+
+
 def test_continuous():
     assert decide_pump(_inputs(mode=MODE_CONTINUOUS, runtime_today_h=20)).turn_on is True
 

@@ -479,6 +479,8 @@ class PumpInputs:
     last_switch: datetime | None = None
     metal_ex_active: bool = False
     program_active: bool = False
+    # When the current mode was chosen; None = long ago.
+    mode_since: datetime | None = None
 
 
 @dataclass(slots=True)
@@ -529,12 +531,12 @@ def _decide_for_mode(inp: PumpInputs) -> PumpDecision:
     now_t = inp.now.time()
 
     if inp.mode == MODE_AUTO:
-        if now_t >= inp.start_time:
+        if now_t >= inp.start_time and _armed(inp, inp.start_time):
             return PumpDecision(True, STATUS_RUNNING_SCHEDULE)
         return PumpDecision(False, STATUS_WAITING_SCHEDULE)
 
     if inp.mode == MODE_SOLAR:
-        if now_t >= inp.catchup_time:
+        if now_t >= inp.catchup_time and _armed(inp, inp.catchup_time):
             return PumpDecision(True, STATUS_RUNNING_CATCHUP)
         confirm = timedelta(seconds=SOLAR_CONFIRM_SECONDS)
         if inp.pump_on:
@@ -548,6 +550,18 @@ def _decide_for_mode(inp: PumpInputs) -> PumpDecision:
         return PumpDecision(False, STATUS_WAITING_SUN)
 
     return PumpDecision(None, STATUS_MANUAL)
+
+
+def _armed(inp: PumpInputs, at: time) -> bool:
+    """Whether today's schedule point already belonged to the current mode.
+
+    Switching to a schedule mode after the start (or catch-up) time must not
+    start the pump right away; the schedule begins with the next start.
+    """
+    if inp.mode_since is None:
+        return True
+    point = inp.now.replace(hour=at.hour, minute=at.minute, second=at.second, microsecond=0)
+    return inp.mode_since <= point
 
 
 def _apply_switch_guard(inp: PumpInputs, decision: PumpDecision) -> PumpDecision:

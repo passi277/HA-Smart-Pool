@@ -268,6 +268,7 @@ class SmartPoolController:
 
         # Persisted state
         self.mode: str = DEFAULT_MODE
+        self.mode_since: datetime | None = None
         self.start_time: time = _parse_time(None, DEFAULT_START_TIME)
         self.target_runtime: float | None = None
         self.follow_recommendation: bool = True
@@ -383,6 +384,8 @@ class SmartPoolController:
         stored = await self._store.async_load() or {}
         if stored.get("mode") in MODES:
             self.mode = stored["mode"]
+        if raw := stored.get("mode_since"):
+            self.mode_since = dt_util.parse_datetime(raw)
         self.start_time = _parse_time(stored.get("start_time"), DEFAULT_START_TIME)
         if stored.get("target_runtime") is not None:
             self.target_runtime = float(stored["target_runtime"])
@@ -434,6 +437,7 @@ class SmartPoolController:
     def _data_to_save(self) -> dict[str, Any]:
         return {
             "mode": self.mode,
+            "mode_since": self.mode_since.isoformat() if self.mode_since else None,
             "start_time": self.start_time.isoformat(),
             "target_runtime": self.target_runtime,
             "follow_recommendation": self.follow_recommendation,
@@ -514,7 +518,9 @@ class SmartPoolController:
         """Change the operating mode."""
         if mode not in MODES:
             raise HomeAssistantError(f"Unknown mode {mode}")
-        self.mode = mode
+        if mode != self.mode:
+            self.mode = mode
+            self.mode_since = dt_util.now()
         self._schedule_save()
         await self.async_update()
 
@@ -1363,6 +1369,7 @@ class SmartPoolController:
                 last_switch=self._last_switch,
                 metal_ex_active=self.data.metal_ex_hours_left > 0,
                 program_active=self.program.active,
+                mode_since=self.mode_since,
             )
         )
         self.status = decision.status

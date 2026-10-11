@@ -161,6 +161,23 @@ async def test_auto_mode_runs_until_target(
     assert "pump_stopped" in types
 
 
+async def test_auto_mode_chosen_late_waits_for_next_day(
+    hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
+) -> None:
+    """Switching to auto after the start time does not start the pump."""
+    freezer.move_to(dt_util.start_of_local_day() + timedelta(hours=16, minutes=19))
+    await _setup(hass, _entry())
+
+    await _select_mode(hass, "auto")
+    await _advance(hass, freezer, timedelta(minutes=5))
+    assert hass.states.get(PUMP).state == "off"
+    assert hass.states.get("sensor.pool_pump_status").state == "waiting_schedule"
+
+    freezer.move_to(dt_util.start_of_local_day() + timedelta(days=1, hours=10, minutes=1))
+    await _advance(hass, freezer, timedelta(minutes=1))
+    assert hass.states.get(PUMP).state == "on"
+
+
 async def test_dry_run_protection(
     hass: HomeAssistant, sources, freezer: FrozenDateTimeFactory
 ) -> None:
