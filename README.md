@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/smart_pool/brand/dark_logo.png">
+    <img src="custom_components/smart_pool/brand/logo.png" alt="Smart Pool" width="380">
+  </picture>
+</p>
+
 # Smart Pool für Home Assistant
 
 Eigene Integration für die Pool-Steuerung: Wasserqualität bewerten, Dosierung berechnen,
