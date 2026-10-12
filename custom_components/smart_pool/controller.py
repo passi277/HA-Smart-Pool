@@ -280,7 +280,7 @@ class SmartPoolController:
         # Persisted state
         self.mode: str = DEFAULT_MODE
         self.mode_since: datetime | None = None
-        self.catchup_enabled: bool = True
+        self.catchup_enabled: bool = False
         # Pump switched by hand: no automatic switching until then.
         self.override_until: datetime | None = None
         self.start_time: time = _parse_time(None, DEFAULT_START_TIME)
@@ -405,7 +405,7 @@ class SmartPoolController:
             self.mode = stored["mode"]
         if raw := stored.get("mode_since"):
             self.mode_since = dt_util.parse_datetime(raw)
-        self.catchup_enabled = bool(stored.get("catchup_enabled", True))
+        self.catchup_enabled = bool(stored.get("catchup_enabled", False))
         if raw := stored.get("override_until"):
             self.override_until = dt_util.parse_datetime(raw)
         self.start_time = _parse_time(stored.get("start_time"), DEFAULT_START_TIME)

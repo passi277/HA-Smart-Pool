@@ -178,7 +178,9 @@ def test_auto_switched_on_late_waits_for_next_start():
 def test_solar_switched_on_late_skips_catchup():
     late = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), mode_since=_now(17, 10)))
     assert (late.turn_on, late.status) == (False, STATUS_WAITING_SUN)
-    armed = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), mode_since=_now(16, 20)))
+    armed = decide_pump(
+        _inputs(mode=MODE_SOLAR, now=_now(17, 30), mode_since=_now(16, 20), catchup_enabled=True)
+    )
     assert armed.status == STATUS_RUNNING_CATCHUP
 
 
@@ -214,8 +216,10 @@ def test_solar_keeps_running_through_short_clouds():
     assert (stop.turn_on, stop.status) == (False, STATUS_WAITING_SUN)
 
 
-def test_solar_catchup():
-    decision = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30)))
+def test_solar_catchup_only_when_enabled():
+    default = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30)))
+    assert (default.turn_on, default.status) == (False, STATUS_WAITING_SUN)
+    decision = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), catchup_enabled=True))
     assert (decision.turn_on, decision.status) == (True, STATUS_RUNNING_CATCHUP)
 
 

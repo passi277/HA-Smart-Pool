@@ -487,8 +487,8 @@ class PumpInputs:
     paused: bool = False
     # Someone switched the pump by hand; leave it alone for now.
     override: bool = False
-    # Solar mode: run on grid power from the catch-up time.
-    catchup_enabled: bool = True
+    # Solar mode: run on grid power from the catch-up time (off = solar only).
+    catchup_enabled: bool = False
 
 
 @dataclass(slots=True)
