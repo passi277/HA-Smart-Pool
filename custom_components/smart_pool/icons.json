@@ -29,7 +29,15 @@
       "refilled": { "default": "mdi:water-plus" },
       "metal_ex_added": { "default": "mdi:magnet-on" },
       "log_dose": { "default": "mdi:notebook-plus-outline" },
-      "new_season": { "default": "mdi:calendar-refresh" }
+      "new_season": { "default": "mdi:calendar-refresh" },
+      "resume": { "default": "mdi:play-circle-outline" }
+    },
+    "switch": {
+      "catchup": { "default": "mdi:transmission-tower-import" }
+    },
+    "binary_sensor": {
+      "manual_override": { "default": "mdi:hand-back-right" },
+      "paused": { "default": "mdi:pause-circle-outline" }
     },
     "todo": {
       "tasks": { "default": "mdi:clipboard-list-outline" }

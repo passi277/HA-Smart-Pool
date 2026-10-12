@@ -46,7 +46,7 @@ Dauerbetrieb, Frostschutz) inklusive Trockenlaufschutz und Rückspül-Erinnerung
 | **Manuell** | Keine Steuerung. Nur Berechnung und Anzeige. *(Standard)* |
 | **Aus** | Pumpe bleibt aus. |
 | **Automatik (Zeitplan)** | Startet ab der *Startzeit* und läuft, bis die Soll-Laufzeit erreicht ist. |
-| **Solar** | Startet, wenn die Solarleistung 10 min über der Schwelle liegt (optional nur ab Mindest-Akkustand). Stoppt erst nach 10 min ohne Überschuss. Ist die Soll-Laufzeit bis zur *Nachholzeit* nicht erreicht, läuft sie mit Netzstrom weiter. |
+| **Solar** | Startet, wenn die Solarleistung 10 min über der Schwelle liegt (optional nur ab Mindest-Akkustand). Stoppt erst nach 10 min ohne Überschuss. Ist die Soll-Laufzeit bis zur *Nachholzeit* nicht erreicht, läuft sie mit Netzstrom weiter – abschaltbar mit dem Schalter **„Mit Netzstrom nachholen“**. |
 | **Dauerbetrieb** | Pumpe läuft durchgehend (z. B. Neubefüllung, Schockchlorung, Algen). |
 | **Winter / Frostschutz** | Bei Außentemperatur ≤ Frostgrenze läuft die Pumpe 15 min pro Stunde, sonst aus. |
 
@@ -56,6 +56,19 @@ Netzstrom nach, wenn die Nachholzeit schon vorbei war.
 
 Während einer **Metall-Ex-Behandlung** läuft die Pumpe in *Automatik*, *Solar* und *Winter* durch –
 unabhängig von der Tageslaufzeit. *Manuell* und *Aus* bleiben unangetastet.
+
+**Von Hand geschaltet:** Schaltest du die Pumpe selbst (Steckdose, App, andere Automation), während
+ein automatischer Modus aktiv ist, schaltet Smart Pool sie **für den Rest des Tages nicht zurück**
+(Status „Von Hand geschaltet“). Mit **„Automatik fortsetzen“** oder einem Moduswechsel übernimmt
+Smart Pool sofort wieder, spätestens um Mitternacht.
+
+**Pausieren:** Unter *Pausieren solange an* lässt sich eine Entität eintragen (z. B. das
+„Bewässerung läuft“-Flag). Solange sie an ist, bleibt die Pumpe aus (Status „Pausiert“); Schaltungen
+während der Pause und bis 2 Minuten danach gelten nicht als Handbedienung.
+
+**Pumpe reagiert nicht:** Folgt der Stecker einem Schaltbefehl 90 s lang nicht (z. B. Zigbee-Stecker
+außer Funkreichweite), zeigt Smart Pool „Pumpe reagiert nicht“, meldet „Pumpen-Verbindung instabil“
+und wiederholt den Befehl nur noch alle 5 Minuten.
 
 Bei einer **Pumpenstörung** (Trockenlauf) wird die Pumpe in allen Modi außer *Manuell*
 abgeschaltet und bleibt aus, bis du **„Störung quittieren“** drückst.

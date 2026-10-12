@@ -29,6 +29,7 @@ CONF_PRESENCE_ENTITY: Final = "presence_entity"
 CONF_SHOPPING_LIST_ENTITY: Final = "shopping_list_entity"
 CONF_PUMP_WIFI_ENTITY: Final = "pump_wifi_entity"
 CONF_BACKWASH_TIMER_ENTITY: Final = "backwash_timer_entity"
+CONF_PAUSE_ENTITY: Final = "pause_entity"
 
 OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PUMP_POWER_ENTITY,
@@ -45,6 +46,7 @@ OPTIONAL_ENTITY_KEYS: Final = (
     CONF_SHOPPING_LIST_ENTITY,
     CONF_PUMP_WIFI_ENTITY,
     CONF_BACKWASH_TIMER_ENTITY,
+    CONF_PAUSE_ENTITY,
 )
 
 # --- Tunable parameters (options) ------------------------------------------
@@ -145,6 +147,13 @@ PH_PLUS_G_PER_M3_PER_STEP: Final = 10.0
 TICK_SECONDS: Final = 30
 SOLAR_CONFIRM_SECONDS: Final = 600
 MIN_SWITCH_INTERVAL_SECONDS: Final = 120
+# A switch command counts as unanswered after this long; it is then only
+# repeated every COMMAND_RETRY_SECONDS instead of on every tick.
+COMMAND_CONFIRM_SECONDS: Final = 90
+COMMAND_RETRY_SECONDS: Final = 300
+# Pump changes right after a pause ends (e.g. a scene restoring the pump)
+# are not treated as manual intervention.
+PAUSE_SETTLE_SECONDS: Final = 120
 DRY_RUN_GRACE_SECONDS: Final = 60
 DRY_RUN_CONFIRM_SECONDS: Final = 120
 FROST_RUN_MINUTES: Final = 15
@@ -166,6 +175,9 @@ STATUS_WINTER_IDLE: Final = "winter_idle"
 STATUS_NO_AIR_TEMP: Final = "no_air_temp"
 STATUS_RUNNING_METAL_EX: Final = "running_metal_ex"
 STATUS_RUNNING_PROGRAM: Final = "running_program"
+STATUS_PAUSED: Final = "paused"
+STATUS_MANUAL_OVERRIDE: Final = "manual_override"
+STATUS_PUMP_NO_RESPONSE: Final = "pump_no_response"
 
 STATUSES: Final = (
     STATUS_MANUAL,
@@ -184,6 +196,9 @@ STATUSES: Final = (
     STATUS_NO_AIR_TEMP,
     STATUS_RUNNING_METAL_EX,
     STATUS_RUNNING_PROGRAM,
+    STATUS_PAUSED,
+    STATUS_MANUAL_OVERRIDE,
+    STATUS_PUMP_NO_RESPONSE,
 )
 
 # --- Event types fired on the bus -----------------------------------------
@@ -209,6 +224,8 @@ EVENT_CONNECTION_UNSTABLE: Final = "connection_unstable"
 EVENT_WEEKLY_REPORT: Final = "weekly_report"
 EVENT_VISUAL_FINDING: Final = "visual_finding"
 EVENT_MOTION_WHILE_AWAY: Final = "motion_while_away"
+EVENT_MANUAL_OVERRIDE: Final = "manual_override"
+EVENT_PUMP_NO_RESPONSE: Final = "pump_no_response"
 
 MOTION_COOLDOWN_SECONDS: Final = 600
 

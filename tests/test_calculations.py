@@ -37,6 +37,8 @@ from custom_components.smart_pool.const import (
     STATUS_FAULT,
     STATUS_FROST_PROTECTION,
     STATUS_MANUAL,
+    STATUS_MANUAL_OVERRIDE,
+    STATUS_PAUSED,
     STATUS_PUMP_UNAVAILABLE,
     STATUS_RUNNING_CATCHUP,
     STATUS_RUNNING_SCHEDULE,
@@ -178,6 +180,20 @@ def test_solar_switched_on_late_skips_catchup():
     assert (late.turn_on, late.status) == (False, STATUS_WAITING_SUN)
     armed = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), mode_since=_now(16, 20)))
     assert armed.status == STATUS_RUNNING_CATCHUP
+
+
+def test_pause_and_override():
+    paused = decide_pump(_inputs(mode=MODE_CONTINUOUS, pump_on=True, paused=True))
+    assert (paused.turn_on, paused.status) == (False, STATUS_PAUSED)
+    held = decide_pump(_inputs(now=_now(12), override=True))
+    assert (held.turn_on, held.status) == (None, STATUS_MANUAL_OVERRIDE)
+    off = decide_pump(_inputs(mode=MODE_OFF, pump_on=True, override=True))
+    assert off.turn_on is False
+
+
+def test_solar_without_catchup():
+    decision = decide_pump(_inputs(mode=MODE_SOLAR, now=_now(17, 30), catchup_enabled=False))
+    assert (decision.turn_on, decision.status) == (False, STATUS_WAITING_SUN)
 
 
 def test_continuous():

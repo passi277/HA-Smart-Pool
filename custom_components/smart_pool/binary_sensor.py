@@ -114,8 +114,20 @@ BINARY_SENSORS: tuple[SmartPoolBinarySensorDescription, ...] = (
     SmartPoolBinarySensorDescription(
         key="connection_unstable",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        value_fn=lambda c: c.data.connection_unstable,
-        attrs_fn=lambda c: {"outages_today": c.data.outages_today},
+        value_fn=lambda c: c.data.connection_unstable or c.data.pump_no_response,
+        attrs_fn=lambda c: {
+            "outages_today": c.data.outages_today,
+            "no_response": c.data.pump_no_response,
+        },
+    ),
+    SmartPoolBinarySensorDescription(
+        key="manual_override",
+        value_fn=lambda c: c.data.override_until is not None,
+        attrs_fn=lambda c: {"until": c.data.override_until},
+    ),
+    SmartPoolBinarySensorDescription(
+        key="paused",
+        value_fn=lambda c: c.data.paused,
     ),
     SmartPoolBinarySensorDescription(
         key="frost_risk",

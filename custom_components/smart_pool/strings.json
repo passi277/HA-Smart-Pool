@@ -29,7 +29,8 @@
           "motion_entity": "Motion at the pool",
           "presence_entity": "Presence (home/away)",
           "shopping_list_entity": "Shopping list",
-          "backwash_timer_entity": "Backwash timer"
+          "backwash_timer_entity": "Backwash timer",
+          "pause_entity": "Pause while on"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -43,6 +44,7 @@
           "presence_entity": "Motion is reported when this is not 'home'/'on'.",
           "shopping_list_entity": "Low chemicals are added automatically.",
           "backwash_timer_entity": "When this timer finishes, the backwash counts as done automatically.",
+          "pause_entity": "While this is on (e.g. irrigation running), the pump is kept off.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast."
         }
       }
@@ -80,6 +82,7 @@
           "presence_entity": "Presence (home/away)",
           "shopping_list_entity": "Shopping list",
           "backwash_timer_entity": "Backwash timer",
+          "pause_entity": "Pause while on",
           "pump_flow": "Pump flow rate (0 = unknown)",
           "min_runtime": "Minimum daily runtime",
           "max_runtime": "Maximum daily runtime",
@@ -117,6 +120,7 @@
           "presence_entity": "Motion is reported when this is not 'home'/'on'.",
           "shopping_list_entity": "Low chemicals are added automatically.",
           "backwash_timer_entity": "When this timer finishes, the backwash counts as done automatically.",
+          "pause_entity": "While this is on (e.g. irrigation running), the pump is kept off.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.",
           "pump_flow": "If set, the runtime covers at least one full water turnover.",
           "chlorine_strength": "e.g. 56 % dichlor granulate, 65–70 % calcium hypochlorite, 90 % trichlor tablets.",
@@ -125,7 +129,7 @@
           "metal_ex_fresh": "Steinbach Metall-EX: 30–60 ml per m³; use the upper value for iron-rich well water.",
           "metal_ex_hours": "The pump runs continuously this long after dosing (Steinbach: at least 48 h), then backwash.",
           "multitab_volume": "Typical 200 g multi tabs: 1 tab per 20–30 m³ per week.",
-          "catchup_time": "If the daily runtime is not reached by then, the pump runs on grid power."
+          "catchup_time": "If the daily runtime is not reached by then, the pump runs on grid power (switch 'Catch up on grid power')."
         }
       }
     }
@@ -177,7 +181,10 @@
           "winter_idle": "Winter – idle",
           "no_air_temp": "No outdoor temperature",
           "running_metal_ex": "Running (metal remover)",
-          "running_program": "Running (program)"
+          "running_program": "Running (program)",
+          "paused": "Paused (other system)",
+          "manual_override": "Switched by hand – automatic paused today",
+          "pump_no_response": "Pump does not respond"
         }
       },
       "recommended_runtime": {
@@ -325,6 +332,12 @@
       },
       "metal_ex_active": {
         "name": "Metal remover treatment"
+      },
+      "manual_override": {
+        "name": "Switched by hand"
+      },
+      "paused": {
+        "name": "Paused"
       }
     },
     "select": {
@@ -369,6 +382,9 @@
     "switch": {
       "follow_recommendation": {
         "name": "Follow recommendation"
+      },
+      "catchup": {
+        "name": "Catch up on grid power"
       }
     },
     "time": {
@@ -417,6 +433,9 @@
       },
       "reset_fault": {
         "name": "Reset fault"
+      },
+      "resume": {
+        "name": "Resume automatic"
       },
       "refilled": {
         "name": "Refilled"

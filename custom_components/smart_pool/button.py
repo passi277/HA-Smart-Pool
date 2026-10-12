@@ -29,6 +29,10 @@ BUTTONS: tuple[SmartPoolButtonDescription, ...] = (
         press_fn=lambda c: c.async_backwash_done(),
     ),
     SmartPoolButtonDescription(
+        key="resume",
+        press_fn=lambda c: c.async_resume(),
+    ),
+    SmartPoolButtonDescription(
         key="refilled",
         press_fn=lambda c: c.async_refilled(),
     ),

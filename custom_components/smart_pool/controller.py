@@ -65,6 +65,8 @@ from .chemistry import (
     shock_dose,
 )
 from .const import (
+    COMMAND_CONFIRM_SECONDS,
+    COMMAND_RETRY_SECONDS,
     CONF_AIR_TEMP_ENTITY,
     CONF_BACKWASH_DAYS,
     CONF_BACKWASH_HOURS,
@@ -88,6 +90,7 @@ from .const import (
     CONF_MULTITAB_VOLUME,
     CONF_ORP_ENTITY,
     CONF_OUTAGE_LIMIT,
+    CONF_PAUSE_ENTITY,
     CONF_PH_ENTITY,
     CONF_PRESENCE_ENTITY,
     CONF_PROBE_DAYS,
@@ -121,6 +124,7 @@ from .const import (
     EVENT_DOSE_LOGGED,
     EVENT_HEAVY_RAIN,
     EVENT_MAINTENANCE_DUE,
+    EVENT_MANUAL_OVERRIDE,
     EVENT_MEASUREMENT_STALE,
     EVENT_METAL_EX_ADDED,
     EVENT_METAL_EX_DONE,
@@ -129,6 +133,7 @@ from .const import (
     EVENT_PROGRAM_DONE,
     EVENT_PROGRAM_STARTED,
     EVENT_PUMP_FAULT,
+    EVENT_PUMP_NO_RESPONSE,
     EVENT_PUMP_STARTED,
     EVENT_PUMP_STOPPED,
     EVENT_REFILLED,
@@ -140,12 +145,15 @@ from .const import (
     EVENT_WEEKLY_REPORT,
     MODE_AUTO,
     MODE_MANUAL,
+    MODE_OFF,
     MODE_WINTER,
     MODES,
     MOTION_COOLDOWN_SECONDS,
     OPTIONAL_ENTITY_KEYS,
+    PAUSE_SETTLE_SECONDS,
     QUALITY_UNKNOWN,
     STATUS_MANUAL,
+    STATUS_PUMP_NO_RESPONSE,
     TICK_SECONDS,
     WEATHER_REFRESH_SECONDS,
 )
@@ -240,6 +248,9 @@ class PoolData:
     motion_away: bool = False
     outages_today: int = 0
     connection_unstable: bool = False
+    pump_no_response: bool = False
+    paused: bool = False
+    override_until: datetime | None = None
     multitab_due_tabs: int = 0
     backwash_days: float | None = None
     backwash_reason: str | None = None
@@ -269,6 +280,9 @@ class SmartPoolController:
         # Persisted state
         self.mode: str = DEFAULT_MODE
         self.mode_since: datetime | None = None
+        self.catchup_enabled: bool = True
+        # Pump switched by hand: no automatic switching until then.
+        self.override_until: datetime | None = None
         self.start_time: time = _parse_time(None, DEFAULT_START_TIME)
         self.target_runtime: float | None = None
         self.follow_recommendation: bool = True
@@ -316,6 +330,11 @@ class SmartPoolController:
         self._pump_on: bool | None = None
         self._pump_on_since: datetime | None = None
         self._last_switch: datetime | None = None
+        # Last switch command not yet reflected by the pump: (turn_on, sent at).
+        self._command: tuple[bool, datetime] | None = None
+        self._command_resent: datetime | None = None
+        self._paused = False
+        self._pause_ended: datetime | None = None
         self._surplus_since: datetime | None = None
         self._deficit_since: datetime | None = None
         self._low_power_since: datetime | None = None
@@ -386,6 +405,9 @@ class SmartPoolController:
             self.mode = stored["mode"]
         if raw := stored.get("mode_since"):
             self.mode_since = dt_util.parse_datetime(raw)
+        self.catchup_enabled = bool(stored.get("catchup_enabled", True))
+        if raw := stored.get("override_until"):
+            self.override_until = dt_util.parse_datetime(raw)
         self.start_time = _parse_time(stored.get("start_time"), DEFAULT_START_TIME)
         if stored.get("target_runtime") is not None:
             self.target_runtime = float(stored["target_runtime"])
@@ -438,6 +460,8 @@ class SmartPoolController:
         return {
             "mode": self.mode,
             "mode_since": self.mode_since.isoformat() if self.mode_since else None,
+            "catchup_enabled": self.catchup_enabled,
+            "override_until": self.override_until.isoformat() if self.override_until else None,
             "start_time": self.start_time.isoformat(),
             "target_runtime": self.target_runtime,
             "follow_recommendation": self.follow_recommendation,
@@ -521,6 +545,10 @@ class SmartPoolController:
         if mode != self.mode:
             self.mode = mode
             self.mode_since = dt_util.now()
+        # Choosing a mode takes control back from a manual intervention.
+        self.override_until = None
+        self._command = None
+        self.data.pump_no_response = False
         self._schedule_save()
         await self.async_update()
 
@@ -539,6 +567,18 @@ class SmartPoolController:
         """
         self.target_runtime = value
         self.follow_recommendation = abs(value - self.data.recommended_runtime) < 0.25
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_set_catchup(self, enabled: bool) -> None:
+        """Solar mode: allow or forbid catching up on grid power."""
+        self.catchup_enabled = enabled
+        self._schedule_save()
+        await self.async_update()
+
+    async def async_resume(self) -> None:
+        """End a manual intervention; the mode takes over again."""
+        self.override_until = None
         self._schedule_save()
         await self.async_update()
 
@@ -766,7 +806,9 @@ class SmartPoolController:
             now = dt_util.now()
             self._integrate_energy(now)
             self._accumulate(now)
+            self._read_pause(now)
             self._read_pump(now)
+            self._check_command(now)
             await self._async_refresh_forecast(now)
             self._refresh(now)
             self._check_dry_run(now)
@@ -819,11 +861,63 @@ class SmartPoolController:
             self.outages_today += 1
             self.week.outages += 1
         self._pump_state_raw = raw
+        previous = self._pump_on
+        if previous is not None and pump_on is not None and pump_on != previous:
+            self._pump_changed(now, pump_on)
         if pump_on and not self._pump_on:
             self._pump_on_since = now
         elif not pump_on:
             self._pump_on_since = None
         self._pump_on = pump_on
+
+    def _read_pause(self, now: datetime) -> None:
+        entity_id = self._entity(CONF_PAUSE_ENTITY)
+        state = self.hass.states.get(entity_id) if entity_id else None
+        paused = state is not None and state.state == STATE_ON
+        if self._paused and not paused:
+            self._pause_ended = now
+        self._paused = paused
+        self.data.paused = paused
+
+    def _pump_changed(self, now: datetime, pump_on: bool) -> None:
+        """React to the pump changing state."""
+        if self._command is not None and self._command[0] == pump_on:
+            return  # our own command; confirmed in _check_command
+        if self.mode in (MODE_MANUAL, MODE_OFF) or self._paused:
+            return
+        if (
+            self._pause_ended is not None
+            and (now - self._pause_ended).total_seconds() < PAUSE_SETTLE_SECONDS
+        ):
+            return
+        # Switched by hand or by another automation: respect it for today.
+        self._command = None
+        self.override_until = dt_util.start_of_local_day(now) + timedelta(days=1)
+        self._fire(EVENT_MANUAL_OVERRIDE, pump_on=pump_on)
+
+    def _check_command(self, now: datetime) -> None:
+        """Track whether the pump follows our last switch command."""
+        data = self.data
+        if self.override_until is not None and now >= self.override_until:
+            self.override_until = None
+        data.override_until = self.override_until
+        if self._command is None:
+            data.pump_no_response = False
+            return
+        turn_on, sent = self._command
+        if self._pump_on == turn_on:
+            self._command = None
+            data.pump_no_response = False
+            return
+        if (now - sent).total_seconds() >= COMMAND_CONFIRM_SECONDS and not data.pump_no_response:
+            data.pump_no_response = True
+            _LOGGER.warning(
+                "%s: pump %s did not follow the command to switch %s",
+                self.name,
+                self._entity(CONF_PUMP_ENTITY),
+                "on" if turn_on else "off",
+            )
+            self._fire(EVENT_PUMP_NO_RESPONSE, turn_on=turn_on)
 
     def _refresh(self, now: datetime) -> None:
         cfg = self.config
@@ -1370,19 +1464,34 @@ class SmartPoolController:
                 metal_ex_active=self.data.metal_ex_hours_left > 0,
                 program_active=self.program.active,
                 mode_since=self.mode_since,
+                paused=self._paused,
+                override=self.override_until is not None,
+                catchup_enabled=self.catchup_enabled,
             )
         )
         self.status = decision.status
+        if self.data.pump_no_response and self.mode != MODE_MANUAL:
+            self.status = STATUS_PUMP_NO_RESPONSE
         if decision.turn_on is None or decision.turn_on == self._pump_on:
             return
         if self.mode == MODE_MANUAL:
             return
+        if (
+            self._command is not None
+            and self._command[0] == decision.turn_on
+            and self._command_resent is not None
+            and (now - self._command_resent).total_seconds() < COMMAND_RETRY_SECONDS
+        ):
+            return  # already sent; the pump has not answered yet
 
         service = SERVICE_TURN_ON if decision.turn_on else SERVICE_TURN_OFF
         entity_id = self._entity(CONF_PUMP_ENTITY)
         if entity_id is None:
             return
         self._last_switch = now
+        if self._command is None or self._command[0] != decision.turn_on:
+            self._command = (decision.turn_on, now)
+        self._command_resent = now
         try:
             await self.hass.services.async_call(
                 entity_id.split(".", 1)[0],

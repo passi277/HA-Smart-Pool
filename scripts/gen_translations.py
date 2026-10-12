@@ -22,6 +22,9 @@ status = {
  "no_air_temp": t("No outdoor temperature","Keine Außentemperatur"),
  "running_metal_ex": t("Running (metal remover)","Läuft (Metall-Ex)"),
  "running_program": t("Running (program)","Läuft (Programm)"),
+ "paused": t("Paused (other system)","Pausiert (anderes System)"),
+ "manual_override": t("Switched by hand – automatic paused today","Von Hand geschaltet – Automatik pausiert heute"),
+ "pump_no_response": t("Pump does not respond","Pumpe reagiert nicht"),
 }
 products = {"chlorine": t("Chlorine granules","Chlor-Granulat"), "shock": t("Shock chlorine","Chlor-Schock"),
  "ph_minus": t("pH minus","pH-Minus"), "ph_plus": t("pH plus","pH-Plus"), "metal_ex": t("Metal remover","Metall-Ex"), "multitab": t("Multi tabs","Multitabs")}
@@ -56,6 +59,7 @@ opt = {
  "presence_entity": t("Presence (home/away)","Anwesenheit (zuhause/weg)"),
  "shopping_list_entity": t("Shopping list","Einkaufsliste"),
  "backwash_timer_entity": t("Backwash timer","Rückspül-Timer"),
+ "pause_entity": t("Pause while on","Pausieren solange an"),
 }
 opt_desc = {
  "pump_power_entity": t("Needed for dry-run protection.","Für den Trockenlaufschutz."),
@@ -69,6 +73,7 @@ opt_desc = {
  "presence_entity": t("Motion is reported when this is not 'home'/'on'.","Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist."),
  "shopping_list_entity": t("Low chemicals are added automatically.","Knappe Pflegemittel werden automatisch eingetragen."),
  "backwash_timer_entity": t("When this timer finishes, the backwash counts as done automatically.","Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt."),
+ "pause_entity": t("While this is on (e.g. irrigation running), the pump is kept off.","Solange dies an ist (z. B. Bewässerung läuft), bleibt die Pumpe aus."),
  "rain_entity": t("Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.","Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."),
 }
 params = {
@@ -105,7 +110,7 @@ params_desc = {
  "metal_ex_fresh": t("Steinbach Metall-EX: 30–60 ml per m³; use the upper value for iron-rich well water.","Steinbach Metall-EX: 30–60 ml pro m³; bei eisenhaltigem Brunnenwasser den oberen Wert."),
  "metal_ex_hours": t("The pump runs continuously this long after dosing (Steinbach: at least 48 h), then backwash.","So lange läuft die Pumpe nach der Zugabe durch (Steinbach: mind. 48 h), danach rückspülen."),
  "multitab_volume": t("Typical 200 g multi tabs: 1 tab per 20–30 m³ per week.","Übliche 200-g-Multitabs: 1 Tab je 20–30 m³ pro Woche."),
- "catchup_time": t("If the daily runtime is not reached by then, the pump runs on grid power.","Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom."),
+ "catchup_time": t("If the daily runtime is not reached by then, the pump runs on grid power (switch 'Catch up on grid power').","Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom (Schalter „Mit Netzstrom nachholen“)."),
 }
 out = {
  "config": {
@@ -173,6 +178,8 @@ out = {
    "motion_while_away": {"name": t("Motion while away","Bewegung bei Abwesenheit")},
    "connection_unstable": {"name": t("Pump connection unstable","Pumpen-Verbindung instabil")},
    "metal_ex_active": {"name": t("Metal remover treatment","Metall-Ex-Behandlung")},
+   "manual_override": {"name": t("Switched by hand","Von Hand geschaltet")},
+   "paused": {"name": t("Paused","Pausiert")},
   },
   "select": {
    "mode": {"name": t("Mode","Betriebsart"), "state": modes},
@@ -180,7 +187,8 @@ out = {
    "dose_product": {"name": t("Dose product","Pflegemittel"), "state": products},
   },
   "todo": {"tasks": {"name": t("Tasks","Aufgaben")}},
-  "switch": {"follow_recommendation": {"name": t("Follow recommendation","Empfehlung automatisch übernehmen")}},
+  "switch": {"follow_recommendation": {"name": t("Follow recommendation","Empfehlung automatisch übernehmen")},
+             "catchup": {"name": t("Catch up on grid power","Mit Netzstrom nachholen")}},
   "time": {"start_time": {"name": t("Start time","Startzeit")}},
   "number": {
    "target_runtime": {"name": t("Target runtime","Soll-Laufzeit")},
@@ -193,6 +201,7 @@ out = {
   "button": {
    "backwash_done": {"name": t("Backwash done","Rückgespült")},
    "reset_fault": {"name": t("Reset fault","Störung quittieren")},
+   "resume": {"name": t("Resume automatic","Automatik fortsetzen")},
    "refilled": {"name": t("Refilled","Nachgefüllt")},
    "metal_ex_added": {"name": t("Metal remover added","Metall-Ex zugegeben")},
    "log_dose": {"name": t("Log dose","Zugabe erfassen")},

@@ -19,7 +19,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Smart Pool switches."""
-    async_add_entities([SmartPoolFollowRecommendation(entry.runtime_data, "follow_recommendation")])
+    async_add_entities(
+        [
+            SmartPoolFollowRecommendation(entry.runtime_data, "follow_recommendation"),
+            SmartPoolCatchup(entry.runtime_data, "catchup"),
+        ]
+    )
 
 
 class SmartPoolFollowRecommendation(SmartPoolEntity, SwitchEntity):
@@ -39,3 +44,20 @@ class SmartPoolFollowRecommendation(SmartPoolEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Keep the target fixed."""
         await self.controller.async_set_follow_recommendation(False)
+
+
+class SmartPoolCatchup(SmartPoolEntity, SwitchEntity):
+    """Solar mode: run on grid power from the catch-up time if needed."""
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if catching up on grid power is allowed."""
+        return self.controller.catchup_enabled
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Allow catching up."""
+        await self.controller.async_set_catchup(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Run on solar power only."""
+        await self.controller.async_set_catchup(False)

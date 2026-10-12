@@ -40,6 +40,7 @@ from .const import (
     CONF_MULTITAB_VOLUME,
     CONF_ORP_ENTITY,
     CONF_OUTAGE_LIMIT,
+    CONF_PAUSE_ENTITY,
     CONF_PH_ENTITY,
     CONF_PRESENCE_ENTITY,
     CONF_PROBE_DAYS,
@@ -141,6 +142,11 @@ def _optional_entities_schema(values: dict[str, Any]) -> dict[Any, Any]:
         ),
         CONF_BACKWASH_TIMER_ENTITY: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="timer")
+        ),
+        CONF_PAUSE_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain=["input_boolean", "binary_sensor", "switch", "timer", "script"]
+            )
         ),
         CONF_SHOPPING_LIST_ENTITY: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="todo")

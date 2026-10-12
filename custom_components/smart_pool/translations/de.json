@@ -29,7 +29,8 @@
           "motion_entity": "Bewegung am Pool",
           "presence_entity": "Anwesenheit (zuhause/weg)",
           "shopping_list_entity": "Einkaufsliste",
-          "backwash_timer_entity": "Rückspül-Timer"
+          "backwash_timer_entity": "Rückspül-Timer",
+          "pause_entity": "Pausieren solange an"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -43,6 +44,7 @@
           "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
           "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
           "backwash_timer_entity": "Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt.",
+          "pause_entity": "Solange dies an ist (z. B. Bewässerung läuft), bleibt die Pumpe aus.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."
         }
       }
@@ -80,6 +82,7 @@
           "presence_entity": "Anwesenheit (zuhause/weg)",
           "shopping_list_entity": "Einkaufsliste",
           "backwash_timer_entity": "Rückspül-Timer",
+          "pause_entity": "Pausieren solange an",
           "pump_flow": "Pumpen-Fördermenge (0 = unbekannt)",
           "min_runtime": "Minimale Tageslaufzeit",
           "max_runtime": "Maximale Tageslaufzeit",
@@ -117,6 +120,7 @@
           "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
           "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
           "backwash_timer_entity": "Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt.",
+          "pause_entity": "Solange dies an ist (z. B. Bewässerung läuft), bleibt die Pumpe aus.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt.",
           "pump_flow": "Wenn gesetzt, wird mindestens einmal das ganze Wasser umgewälzt.",
           "chlorine_strength": "z. B. 56 % Dichlor-Granulat, 65–70 % Calciumhypochlorit, 90 % Trichlor-Tabletten.",
@@ -125,7 +129,7 @@
           "metal_ex_fresh": "Steinbach Metall-EX: 30–60 ml pro m³; bei eisenhaltigem Brunnenwasser den oberen Wert.",
           "metal_ex_hours": "So lange läuft die Pumpe nach der Zugabe durch (Steinbach: mind. 48 h), danach rückspülen.",
           "multitab_volume": "Übliche 200-g-Multitabs: 1 Tab je 20–30 m³ pro Woche.",
-          "catchup_time": "Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom."
+          "catchup_time": "Ist die Tageslaufzeit bis dahin nicht erreicht, läuft die Pumpe mit Netzstrom (Schalter „Mit Netzstrom nachholen“)."
         }
       }
     }
@@ -177,7 +181,10 @@
           "winter_idle": "Winter – Pause",
           "no_air_temp": "Keine Außentemperatur",
           "running_metal_ex": "Läuft (Metall-Ex)",
-          "running_program": "Läuft (Programm)"
+          "running_program": "Läuft (Programm)",
+          "paused": "Pausiert (anderes System)",
+          "manual_override": "Von Hand geschaltet – Automatik pausiert heute",
+          "pump_no_response": "Pumpe reagiert nicht"
         }
       },
       "recommended_runtime": {
@@ -325,6 +332,12 @@
       },
       "metal_ex_active": {
         "name": "Metall-Ex-Behandlung"
+      },
+      "manual_override": {
+        "name": "Von Hand geschaltet"
+      },
+      "paused": {
+        "name": "Pausiert"
       }
     },
     "select": {
@@ -369,6 +382,9 @@
     "switch": {
       "follow_recommendation": {
         "name": "Empfehlung automatisch übernehmen"
+      },
+      "catchup": {
+        "name": "Mit Netzstrom nachholen"
       }
     },
     "time": {
@@ -417,6 +433,9 @@
       },
       "reset_fault": {
         "name": "Störung quittieren"
+      },
+      "resume": {
+        "name": "Automatik fortsetzen"
       },
       "refilled": {
         "name": "Nachgefüllt"

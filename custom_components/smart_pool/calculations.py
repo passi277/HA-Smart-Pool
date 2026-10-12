@@ -38,8 +38,10 @@ from .const import (
     STATUS_FAULT,
     STATUS_FROST_PROTECTION,
     STATUS_MANUAL,
+    STATUS_MANUAL_OVERRIDE,
     STATUS_NO_AIR_TEMP,
     STATUS_OFF,
+    STATUS_PAUSED,
     STATUS_PUMP_UNAVAILABLE,
     STATUS_RUNNING_CATCHUP,
     STATUS_RUNNING_CONTINUOUS,
@@ -481,6 +483,12 @@ class PumpInputs:
     program_active: bool = False
     # When the current mode was chosen; None = long ago.
     mode_since: datetime | None = None
+    # Another system needs the pump off (e.g. irrigation running).
+    paused: bool = False
+    # Someone switched the pump by hand; leave it alone for now.
+    override: bool = False
+    # Solar mode: run on grid power from the catch-up time.
+    catchup_enabled: bool = True
 
 
 @dataclass(slots=True)
@@ -501,6 +509,10 @@ def decide_pump(inp: PumpInputs) -> PumpDecision:
         return PumpDecision(False, STATUS_FAULT)
     if inp.mode == MODE_OFF:
         return PumpDecision(False, STATUS_OFF)
+    if inp.paused:
+        return PumpDecision(False, STATUS_PAUSED)
+    if inp.override:
+        return PumpDecision(None, STATUS_MANUAL_OVERRIDE)
 
     decision = _decide_for_mode(inp)
     return _apply_switch_guard(inp, decision)
@@ -536,7 +548,7 @@ def _decide_for_mode(inp: PumpInputs) -> PumpDecision:
         return PumpDecision(False, STATUS_WAITING_SCHEDULE)
 
     if inp.mode == MODE_SOLAR:
-        if now_t >= inp.catchup_time and _armed(inp, inp.catchup_time):
+        if inp.catchup_enabled and now_t >= inp.catchup_time and _armed(inp, inp.catchup_time):
             return PumpDecision(True, STATUS_RUNNING_CATCHUP)
         confirm = timedelta(seconds=SOLAR_CONFIRM_SECONDS)
         if inp.pump_on:
