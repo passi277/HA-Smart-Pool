@@ -15,6 +15,8 @@
       "weekly_report": { "default": "mdi:file-chart-outline" },
       "last_dose": { "default": "mdi:notebook-edit-outline" },
       "program_remaining": { "default": "mdi:progress-clock" },
+      "solar_start": { "default": "mdi:weather-sunset-up" },
+      "solar_hours_forecast": { "default": "mdi:solar-power-variant" },
       "solar_share_today": { "default": "mdi:solar-power" },
       "solar_savings_rate": { "default": "mdi:cash-check" },
       "pump_outages_today": { "default": "mdi:wifi-alert" }

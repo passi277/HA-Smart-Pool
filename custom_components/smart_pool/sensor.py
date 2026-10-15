@@ -26,7 +26,13 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import SmartPoolConfigEntry
 from .chemistry import PRODUCT_UNITS
-from .const import CONF_BACKWASH_HOURS, CONF_METAL_EX_HOURS, QUALITY_STATES, STATUSES
+from .const import (
+    CONF_BACKWASH_HOURS,
+    CONF_METAL_EX_HOURS,
+    CONF_SOLAR_THRESHOLD,
+    QUALITY_STATES,
+    STATUSES,
+)
 from .controller import SmartPoolController
 from .entity import SmartPoolEntity
 from .season import MAINTENANCE_TASKS, SEASONS
@@ -72,6 +78,34 @@ def _dose_attrs(c: SmartPoolController) -> dict[str, Any]:
             {"time": e.time.isoformat(), "product": e.product, "amount": e.amount}
             for e in reversed(c.chem.log[-10:])
         ],
+    }
+
+
+def _solar_start(c: SmartPoolController) -> datetime | None:
+    plan = c.data.solar_plan
+    if plan is None:
+        return None
+    if plan.running and plan.windows:
+        return plan.windows[0].start
+    return plan.next_start or plan.tomorrow_start
+
+
+def _solar_attrs(c: SmartPoolController) -> dict[str, Any]:
+    plan = c.data.solar_plan
+    if plan is None:
+        return {}
+    return {
+        "running": plan.running,
+        "today": plan.next_start is not None or plan.running,
+        "end": plan.end,
+        "hours_today": plan.hours_today,
+        "tomorrow_start": plan.tomorrow_start,
+        "tomorrow_end": plan.tomorrow_end,
+        "tomorrow_hours": plan.tomorrow_hours,
+        "windows": [[w.start.isoformat(), w.end.isoformat()] for w in plan.windows],
+        "threshold": float(c.config[CONF_SOLAR_THRESHOLD]),
+        "factor": c.solar_factor,
+        "curve": [[p.start.isoformat(), p.watts] for p in c.data.solar_curve],
     }
 
 
@@ -261,6 +295,22 @@ SENSORS: tuple[SmartPoolSensorDescription, ...] = (
         attrs_fn=lambda c: {"rating": c.data.swim_label},
     ),
     SmartPoolSensorDescription(
+        key="solar_start",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=_solar_start,
+        attrs_fn=_solar_attrs,
+    ),
+    SmartPoolSensorDescription(
+        key="solar_hours_forecast",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        suggested_display_precision=1,
+        value_fn=lambda c: c.data.solar_plan.hours_today if c.data.solar_plan else None,
+        attrs_fn=lambda c: {
+            "tomorrow": c.data.solar_plan.tomorrow_hours if c.data.solar_plan else None
+        },
+    ),
+    SmartPoolSensorDescription(
         key="solar_energy_today",
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
@@ -323,7 +373,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up Smart Pool sensors."""
     controller = entry.runtime_data
-    async_add_entities(SmartPoolSensor(controller, desc) for desc in SENSORS)
+    async_add_entities(
+        (SmartPoolSolarSensor if desc.key == "solar_start" else SmartPoolSensor)(controller, desc)
+        for desc in SENSORS
+    )
 
 
 class SmartPoolSensor(SmartPoolEntity, SensorEntity):
@@ -352,3 +405,9 @@ class SmartPoolSensor(SmartPoolEntity, SensorEntity):
         if self.entity_description.attrs_fn is None:
             return None
         return self.entity_description.attrs_fn(self.controller)
+
+
+class SmartPoolSolarSensor(SmartPoolSensor):
+    """Expected solar start; the forecast curve is not written to the recorder."""
+
+    _unrecorded_attributes = frozenset({"curve", "windows"})

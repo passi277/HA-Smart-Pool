@@ -57,6 +57,15 @@ Netzstrom nach, wenn die Nachholzeit schon vorbei war.
 Während einer **Metall-Ex-Behandlung** läuft die Pumpe in *Automatik*, *Solar* und *Winter* durch –
 unabhängig von der Tageslaufzeit. *Manuell* und *Aus* bleiben unangetastet.
 
+**Solar-Prognose:** Trägst du unter *PV-Prognose heute/morgen* die Solcast-Sensoren ein
+(„Prognose heute“ / „Prognose morgen“), sagt Smart Pool voraus, wann der Solar-Modus startet und
+stoppt (`sensor.<pool>_solar_start_prognose`, Attribute `end`, `hours_today`, `tomorrow_start`,
+`curve`) und wie viele Stunden heute mit Sonne zusammenkommen. Berücksichtigt werden Startschwelle,
+die 10 Minuten Bestätigungszeit und die noch fehlende Tageslaufzeit. Die Prognose lernt mit: Weicht
+die gemessene Solarleistung dauerhaft von Solcast ab, wird ein Korrekturfaktor angepasst (Attribut
+`factor`, Perioden mit vollem Akku zählen nicht). Die Pool-Karte zeigt das mit
+`solar_forecast: sensor.<pool>_solar_start_prognose` als Zeile mit Tageskurve.
+
 **Von Hand geschaltet:** Schaltest du die Pumpe selbst (Steckdose, App, andere Automation), während
 ein automatischer Modus aktiv ist, schaltet Smart Pool sie **für den Rest des Tages nicht zurück**
 (Status „Von Hand geschaltet“). Mit **„Automatik fortsetzen“** oder einem Moduswechsel übernimmt

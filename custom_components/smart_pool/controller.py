@@ -103,6 +103,8 @@ from .const import (
     CONF_SAND_DAYS,
     CONF_SEALS_DAYS,
     CONF_SHOPPING_LIST_ENTITY,
+    CONF_SOLAR_FORECAST_ENTITY,
+    CONF_SOLAR_FORECAST_TOMORROW_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
     CONF_SOLAR_THRESHOLD,
     CONF_STALE_HOURS,
@@ -152,6 +154,7 @@ from .const import (
     OPTIONAL_ENTITY_KEYS,
     PAUSE_SETTLE_SECONDS,
     QUALITY_UNKNOWN,
+    SOLAR_CONFIRM_SECONDS,
     STATUS_MANUAL,
     STATUS_PUMP_NO_RESPONSE,
     TICK_SECONDS,
@@ -176,6 +179,14 @@ from .season import (
     TASK_SEALS,
     Season,
     checklist,
+)
+from .solar_forecast import (
+    Period,
+    SolarPlan,
+    forecast_watts,
+    learn_factor,
+    parse_periods,
+    plan_solar,
 )
 from .stats import (
     EnergyCounter,
@@ -251,6 +262,8 @@ class PoolData:
     pump_no_response: bool = False
     paused: bool = False
     override_until: datetime | None = None
+    solar_plan: SolarPlan | None = None
+    solar_curve: list[Period] = field(default_factory=list)
     multitab_due_tabs: int = 0
     backwash_days: float | None = None
     backwash_reason: str | None = None
@@ -281,6 +294,8 @@ class SmartPoolController:
         self.mode: str = DEFAULT_MODE
         self.mode_since: datetime | None = None
         self.catchup_enabled: bool = False
+        # Learned correction of the PV forecast (measured / forecast).
+        self.solar_factor: float = 1.0
         # Pump switched by hand: no automatic switching until then.
         self.override_until: datetime | None = None
         self.start_time: time = _parse_time(None, DEFAULT_START_TIME)
@@ -334,6 +349,8 @@ class SmartPoolController:
         self._command: tuple[bool, datetime] | None = None
         self._command_resent: datetime | None = None
         self._paused = False
+        # Measured PV power in the current forecast period: (period, sum, samples).
+        self._pv_sample: tuple[datetime, float, int] | None = None
         self._pause_ended: datetime | None = None
         self._surplus_since: datetime | None = None
         self._deficit_since: datetime | None = None
@@ -406,6 +423,7 @@ class SmartPoolController:
         if raw := stored.get("mode_since"):
             self.mode_since = dt_util.parse_datetime(raw)
         self.catchup_enabled = bool(stored.get("catchup_enabled", False))
+        self.solar_factor = float(stored.get("solar_factor", 1.0))
         if raw := stored.get("override_until"):
             self.override_until = dt_util.parse_datetime(raw)
         self.start_time = _parse_time(stored.get("start_time"), DEFAULT_START_TIME)
@@ -461,6 +479,7 @@ class SmartPoolController:
             "mode": self.mode,
             "mode_since": self.mode_since.isoformat() if self.mode_since else None,
             "catchup_enabled": self.catchup_enabled,
+            "solar_factor": self.solar_factor,
             "override_until": self.override_until.isoformat() if self.override_until else None,
             "start_time": self.start_time.isoformat(),
             "target_runtime": self.target_runtime,
@@ -1042,6 +1061,7 @@ class SmartPoolController:
 
         self._refresh_energy(now)
         self._refresh_solar(now)
+        self._refresh_solar_forecast(now)
         self._refresh_stock()
         self._refresh_season(now)
         self._refresh_connection(now)
@@ -1418,6 +1438,66 @@ class SmartPoolController:
             self._surplus_since = None
             self._deficit_since = self._deficit_since or now
 
+    def _forecast_periods(self, now: datetime) -> list[Period]:
+        periods: list[Period] = []
+        for key in (CONF_SOLAR_FORECAST_ENTITY, CONF_SOLAR_FORECAST_TOMORROW_ENTITY):
+            entity_id = self._entity(key)
+            state = self.hass.states.get(entity_id) if entity_id else None
+            if state is None:
+                continue
+            raw = state.attributes.get("detailedForecast", state.attributes.get("forecast"))
+            periods.extend(parse_periods(raw, now.tzinfo))
+        unique = {p.start: p for p in periods}
+        return [unique[k] for k in sorted(unique)]
+
+    def _refresh_solar_forecast(self, now: datetime) -> None:
+        data = self.data
+        periods = self._forecast_periods(now)
+        if not periods:
+            data.solar_plan = None
+            data.solar_curve = []
+            return
+        self._learn_solar_factor(now, periods)
+        remaining = max(0.0, data.target_runtime - data.runtime_today)
+        data.solar_plan = plan_solar(
+            periods,
+            now=now,
+            threshold_w=float(self.config[CONF_SOLAR_THRESHOLD]),
+            factor=self.solar_factor,
+            confirm=timedelta(seconds=SOLAR_CONFIRM_SECONDS),
+            remaining_today_h=remaining,
+            target_h=data.target_runtime,
+        )
+        start = dt_util.start_of_local_day(now)
+        end = start + timedelta(days=2)
+        data.solar_curve = [
+            Period(p.start, round(p.watts * self.solar_factor))
+            for p in periods
+            if start <= p.start < end
+        ]
+
+    def _learn_solar_factor(self, now: datetime, periods: list[Period]) -> None:
+        """Compare the measured PV power with the forecast, period by period."""
+        measured = self._state_float(CONF_SOLAR_POWER_ENTITY)
+        current = next((p.start for p in reversed(periods) if p.start <= now), None)
+        if current is None or measured is None:
+            return
+        # A full battery throttles the PV input; such periods say nothing.
+        soc = self._state_float(CONF_BATTERY_SOC_ENTITY)
+        if soc is not None and soc >= 98:
+            self._pv_sample = None
+            return
+        sample = self._pv_sample
+        if sample is not None and sample[0] != current:
+            started, total, count = sample
+            forecast = forecast_watts(periods, started)
+            if forecast is not None and count >= 10:
+                self.solar_factor = learn_factor(self.solar_factor, total / count, forecast)
+            sample = None
+        if sample is None:
+            sample = (current, 0.0, 0)
+        self._pv_sample = (current, sample[1] + measured, sample[2] + 1)
+
     def _check_dry_run(self, now: datetime) -> None:
         min_power = float(self.config[CONF_DRY_RUN_POWER])
         power = self.data.pump_power
@@ -1534,6 +1614,9 @@ class SmartPoolController:
             "cost_today": own("sensor", "cost_today"),
             "solar_power": self._entity(CONF_SOLAR_POWER_ENTITY),
             "solar_savings": own("sensor", "solar_savings_rate"),
+            "solar_forecast": own("sensor", "solar_start")
+            if self._entity(CONF_SOLAR_FORECAST_ENTITY)
+            else None,
             "backwash": {
                 "due": own("binary_sensor", "backwash_due"),
                 "hours": own("sensor", "backwash_hours"),

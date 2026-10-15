@@ -30,7 +30,9 @@
           "presence_entity": "Presence (home/away)",
           "shopping_list_entity": "Shopping list",
           "backwash_timer_entity": "Backwash timer",
-          "pause_entity": "Pause while on"
+          "pause_entity": "Pause while on",
+          "solar_forecast_entity": "PV forecast today",
+          "solar_forecast_tomorrow_entity": "PV forecast tomorrow"
         },
         "data_description": {
           "pump_power_entity": "Needed for dry-run protection.",
@@ -44,6 +46,8 @@
           "presence_entity": "Motion is reported when this is not 'home'/'on'.",
           "shopping_list_entity": "Low chemicals are added automatically.",
           "backwash_timer_entity": "When this timer finishes, the backwash counts as done automatically.",
+          "solar_forecast_entity": "Solcast 'forecast today' (attribute detailedForecast) – used to predict when the solar mode starts.",
+          "solar_forecast_tomorrow_entity": "Solcast 'forecast tomorrow' for the outlook on the next day.",
           "pause_entity": "While this is on (e.g. irrigation running), the pump is kept off.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast."
         }
@@ -83,6 +87,8 @@
           "shopping_list_entity": "Shopping list",
           "backwash_timer_entity": "Backwash timer",
           "pause_entity": "Pause while on",
+          "solar_forecast_entity": "PV forecast today",
+          "solar_forecast_tomorrow_entity": "PV forecast tomorrow",
           "pump_flow": "Pump flow rate (0 = unknown)",
           "min_runtime": "Minimum daily runtime",
           "max_runtime": "Maximum daily runtime",
@@ -120,6 +126,8 @@
           "presence_entity": "Motion is reported when this is not 'home'/'on'.",
           "shopping_list_entity": "Low chemicals are added automatically.",
           "backwash_timer_entity": "When this timer finishes, the backwash counts as done automatically.",
+          "solar_forecast_entity": "Solcast 'forecast today' (attribute detailedForecast) – used to predict when the solar mode starts.",
+          "solar_forecast_tomorrow_entity": "Solcast 'forecast tomorrow' for the outlook on the next day.",
           "pause_entity": "While this is on (e.g. irrigation running), the pump is kept off.",
           "rain_entity": "Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.",
           "pump_flow": "If set, the runtime covers at least one full water turnover.",
@@ -267,6 +275,12 @@
       },
       "swim_score": {
         "name": "Swim weather"
+      },
+      "solar_start": {
+        "name": "Solar start forecast"
+      },
+      "solar_hours_forecast": {
+        "name": "Solar runtime forecast"
       },
       "solar_energy_today": {
         "name": "Solar energy today"

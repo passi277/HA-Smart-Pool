@@ -30,6 +30,8 @@ CONF_SHOPPING_LIST_ENTITY: Final = "shopping_list_entity"
 CONF_PUMP_WIFI_ENTITY: Final = "pump_wifi_entity"
 CONF_BACKWASH_TIMER_ENTITY: Final = "backwash_timer_entity"
 CONF_PAUSE_ENTITY: Final = "pause_entity"
+CONF_SOLAR_FORECAST_ENTITY: Final = "solar_forecast_entity"
+CONF_SOLAR_FORECAST_TOMORROW_ENTITY: Final = "solar_forecast_tomorrow_entity"
 
 OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PUMP_POWER_ENTITY,
@@ -47,6 +49,8 @@ OPTIONAL_ENTITY_KEYS: Final = (
     CONF_PUMP_WIFI_ENTITY,
     CONF_BACKWASH_TIMER_ENTITY,
     CONF_PAUSE_ENTITY,
+    CONF_SOLAR_FORECAST_ENTITY,
+    CONF_SOLAR_FORECAST_TOMORROW_ENTITY,
 )
 
 # --- Tunable parameters (options) ------------------------------------------

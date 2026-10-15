@@ -53,6 +53,8 @@ from .const import (
     CONF_SAND_DAYS,
     CONF_SEALS_DAYS,
     CONF_SHOPPING_LIST_ENTITY,
+    CONF_SOLAR_FORECAST_ENTITY,
+    CONF_SOLAR_FORECAST_TOMORROW_ENTITY,
     CONF_SOLAR_POWER_ENTITY,
     CONF_SOLAR_THRESHOLD,
     CONF_STALE_HOURS,
@@ -142,6 +144,12 @@ def _optional_entities_schema(values: dict[str, Any]) -> dict[Any, Any]:
         ),
         CONF_BACKWASH_TIMER_ENTITY: selector.EntitySelector(
             selector.EntitySelectorConfig(domain="timer")
+        ),
+        CONF_SOLAR_FORECAST_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        ),
+        CONF_SOLAR_FORECAST_TOMORROW_ENTITY: selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
         ),
         CONF_PAUSE_ENTITY: selector.EntitySelector(
             selector.EntitySelectorConfig(

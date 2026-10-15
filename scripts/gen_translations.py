@@ -60,6 +60,8 @@ opt = {
  "shopping_list_entity": t("Shopping list","Einkaufsliste"),
  "backwash_timer_entity": t("Backwash timer","Rückspül-Timer"),
  "pause_entity": t("Pause while on","Pausieren solange an"),
+ "solar_forecast_entity": t("PV forecast today","PV-Prognose heute"),
+ "solar_forecast_tomorrow_entity": t("PV forecast tomorrow","PV-Prognose morgen"),
 }
 opt_desc = {
  "pump_power_entity": t("Needed for dry-run protection.","Für den Trockenlaufschutz."),
@@ -73,6 +75,8 @@ opt_desc = {
  "presence_entity": t("Motion is reported when this is not 'home'/'on'.","Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist."),
  "shopping_list_entity": t("Low chemicals are added automatically.","Knappe Pflegemittel werden automatisch eingetragen."),
  "backwash_timer_entity": t("When this timer finishes, the backwash counts as done automatically.","Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt."),
+ "solar_forecast_entity": t("Solcast 'forecast today' (attribute detailedForecast) – used to predict when the solar mode starts.","Solcast „Prognose heute“ (Attribut detailedForecast) – daraus wird vorhergesagt, wann der Solar-Modus startet."),
+ "solar_forecast_tomorrow_entity": t("Solcast 'forecast tomorrow' for the outlook on the next day.","Solcast „Prognose morgen“ für den Ausblick auf den nächsten Tag."),
  "pause_entity": t("While this is on (e.g. irrigation running), the pump is kept off.","Solange dies an ist (z. B. Bewässerung läuft), bleibt die Pumpe aus."),
  "rain_entity": t("Optional: daily or total rain amount. Without it, rain is estimated from the hourly forecast.","Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."),
 }
@@ -155,6 +159,8 @@ out = {
    "program_remaining": {"name": t("Program remaining","Programm Restzeit")},
    "season": {"name": t("Season","Saison"), "state": seasons},
    "swim_score": {"name": t("Swim weather","Badewetter")},
+   "solar_start": {"name": t("Solar start forecast","Solar-Start Prognose")},
+   "solar_hours_forecast": {"name": t("Solar runtime forecast","Solar-Laufzeit Prognose")},
    "solar_energy_today": {"name": t("Solar energy today","Solarstrom heute")},
    "solar_share_today": {"name": t("Solar share today","Solaranteil heute")},
    "solar_savings_today": {"name": t("Solar savings today","Solar-Ersparnis heute")},

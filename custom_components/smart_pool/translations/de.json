@@ -30,7 +30,9 @@
           "presence_entity": "Anwesenheit (zuhause/weg)",
           "shopping_list_entity": "Einkaufsliste",
           "backwash_timer_entity": "Rückspül-Timer",
-          "pause_entity": "Pausieren solange an"
+          "pause_entity": "Pausieren solange an",
+          "solar_forecast_entity": "PV-Prognose heute",
+          "solar_forecast_tomorrow_entity": "PV-Prognose morgen"
         },
         "data_description": {
           "pump_power_entity": "Für den Trockenlaufschutz.",
@@ -44,6 +46,8 @@
           "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
           "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
           "backwash_timer_entity": "Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt.",
+          "solar_forecast_entity": "Solcast „Prognose heute“ (Attribut detailedForecast) – daraus wird vorhergesagt, wann der Solar-Modus startet.",
+          "solar_forecast_tomorrow_entity": "Solcast „Prognose morgen“ für den Ausblick auf den nächsten Tag.",
           "pause_entity": "Solange dies an ist (z. B. Bewässerung läuft), bleibt die Pumpe aus.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt."
         }
@@ -83,6 +87,8 @@
           "shopping_list_entity": "Einkaufsliste",
           "backwash_timer_entity": "Rückspül-Timer",
           "pause_entity": "Pausieren solange an",
+          "solar_forecast_entity": "PV-Prognose heute",
+          "solar_forecast_tomorrow_entity": "PV-Prognose morgen",
           "pump_flow": "Pumpen-Fördermenge (0 = unbekannt)",
           "min_runtime": "Minimale Tageslaufzeit",
           "max_runtime": "Maximale Tageslaufzeit",
@@ -120,6 +126,8 @@
           "presence_entity": "Bewegung wird gemeldet, wenn dies nicht „home“/„on“ ist.",
           "shopping_list_entity": "Knappe Pflegemittel werden automatisch eingetragen.",
           "backwash_timer_entity": "Läuft dieser Timer ab, gilt das Rückspülen automatisch als erledigt.",
+          "solar_forecast_entity": "Solcast „Prognose heute“ (Attribut detailedForecast) – daraus wird vorhergesagt, wann der Solar-Modus startet.",
+          "solar_forecast_tomorrow_entity": "Solcast „Prognose morgen“ für den Ausblick auf den nächsten Tag.",
           "pause_entity": "Solange dies an ist (z. B. Bewässerung läuft), bleibt die Pumpe aus.",
           "rain_entity": "Optional: Regenmenge (Tag oder Gesamt). Ohne wird der Regen aus der stündlichen Vorhersage geschätzt.",
           "pump_flow": "Wenn gesetzt, wird mindestens einmal das ganze Wasser umgewälzt.",
@@ -267,6 +275,12 @@
       },
       "swim_score": {
         "name": "Badewetter"
+      },
+      "solar_start": {
+        "name": "Solar-Start Prognose"
+      },
+      "solar_hours_forecast": {
+        "name": "Solar-Laufzeit Prognose"
       },
       "solar_energy_today": {
         "name": "Solarstrom heute"
