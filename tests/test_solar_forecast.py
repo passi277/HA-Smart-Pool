@@ -101,6 +101,7 @@ def test_plan_running_and_after_sunset():
     )
     assert running.running
     assert running.next_start is None
+    assert running.started == datetime(2026, 10, 15, 9, 40, tzinfo=TZ)
     assert running.end == datetime(2026, 10, 15, 14, 40, tzinfo=TZ)
     assert running.hours_today == 2.67
     evening = plan_solar(

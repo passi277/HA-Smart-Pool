@@ -85,8 +85,8 @@ def _solar_start(c: SmartPoolController) -> datetime | None:
     plan = c.data.solar_plan
     if plan is None:
         return None
-    if plan.running and plan.windows:
-        return plan.windows[0].start
+    if plan.running:
+        return plan.started
     return plan.next_start or plan.tomorrow_start
 
 

@@ -49,6 +49,8 @@ class SolarPlan:
     """Expected solar runs today and tomorrow."""
 
     running: bool = False
+    # Start of the window the pump is in now (when running).
+    started: datetime | None = None
     next_start: datetime | None = None
     end: datetime | None = None
     hours_today: float = 0.0
@@ -170,6 +172,8 @@ def plan_solar(
         first = used[0]
         plan.running = first.start <= now
         plan.next_start = None if plan.running else first.start
+        if plan.running:
+            plan.started = next(w.start for w in windows if w.start <= now < w.end)
         plan.end = first.end
 
     tomorrow = today + timedelta(days=1)
